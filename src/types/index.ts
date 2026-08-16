@@ -72,3 +72,81 @@ export interface NotificationItem {
   read: boolean;
   type: 'price' | 'demand' | 'weather';
 }
+
+export interface FarmerLot {
+  id: string;
+  cropName: string;
+  variety: string;
+  quantityKg: number;
+  harvestDate: string;
+  grade: 'Grade A (Premium)' | 'Grade B (Standard)' | 'Grade C (Processing)';
+  storageStatus: 'On Farm' | 'In Cold Storage' | 'Dispatched';
+  location: string;
+  estValueRs: number;
+  image: string;
+}
+
+export interface StorageFacility {
+  id: string;
+  name: string;
+  type: 'Controlled Atmosphere Cold Storage' | 'Dry Grain Warehouse' | 'Multi-Commodity Cold Chain';
+  location: string;
+  distanceKm: number;
+  totalCapacityMT: number;
+  availableCapacityMT: number;
+  tempRangeCelsius: string;
+  humidityPercent: string;
+  pricePerTonPerDayRs: number;
+  suitableCrops: string[];
+  rating: number;
+  phone: string;
+  image: string;
+}
+
+export interface MarketPriceDetail {
+  id: string;
+  crop: string;
+  mandi: string;
+  state: string;
+  minPrice: number;
+  maxPrice: number;
+  modalPrice: number;
+  arrivalQtyMT: number;
+  priceChangePercent: number;
+  lastUpdated: string;
+}
+
+export interface OrderRecord {
+  id: string;
+  orderNumber: string;
+  channel: 'Blinkit' | 'Swiggy Instamart' | 'Local Mandi (eNAM)' | 'Direct Buyer';
+  crop: string;
+  quantityKg: number;
+  ratePerKg: number;
+  totalAmountRs: number;
+  orderDate: string;
+  pickupDate: string;
+  status: 'Pending Pickup' | 'In Transit' | 'Completed' | 'Payment Processed';
+  payoutStatus: 'Paid' | 'Processing (24h)' | 'Pending';
+}
+
+export interface ReportSummary {
+  totalRevenueRs: number;
+  totalHarvestKg: number;
+  activeLotsCount: number;
+  avgProfitMarginPercent: number;
+  monthlyBreakdown: { month: string; revenue: number; yield: number }[];
+  channelShare: { channel: string; percent: number; amount: number }[];
+}
+
+// --- USER & AUTH TYPES ---
+
+export interface FarmerUser {
+  name: string;
+  mobile: string;
+  location: string;
+  farmSizeAcres: number;
+  mainCrops: string[];
+  isLoggedIn: boolean;
+  avatarUrl: string;
+}

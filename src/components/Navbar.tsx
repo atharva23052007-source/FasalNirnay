@@ -16,6 +16,8 @@ export const Navbar: React.FC = () => {
     isNotifOpen,
     setIsNotifOpen,
     notifications,
+    user,
+    openProfileModal,
   } = useApp();
 
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
@@ -43,7 +45,7 @@ export const Navbar: React.FC = () => {
       <div className="max-w-[1440px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
         
         {/* Brand Logo & Title */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setActiveTab('Dashboard')}>
           <div className="w-8 h-8 rounded-full bg-[#E6F4EA] flex items-center justify-center">
             <svg width="22" height="22" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
               <path d="M12 4C7.58172 4 4 7.58172 4 12C4 16.4183 7.58172 20 12 20C16.4183 20 20 16.4183 20 12C20 7.58172 16.4183 4 12 4Z" fill="#167A42" fillOpacity="0.15"/>
@@ -175,20 +177,24 @@ export const Navbar: React.FC = () => {
             {isNotifOpen && <NotificationsDropdown />}
           </div>
 
-          {/* User Profile */}
-          <div className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-1 px-2 rounded-full transition-all">
-            <div className="w-8 h-8 rounded-full overflow-hidden border border-gray-200 bg-gray-100 flex-shrink-0">
+          {/* User Profile Button */}
+          <div
+            onClick={openProfileModal}
+            className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-1 px-2.5 rounded-full transition-all border border-gray-200 sm:border-transparent hover:border-gray-200"
+            title="Account & Profile"
+          >
+            <div className="w-7 h-7 rounded-full overflow-hidden border border-gray-200 bg-gray-100 flex-shrink-0">
               <img
-                src="https://images.unsplash.com/photo-1595273670150-bd0c3c392e46?w=100&auto=format&fit=crop&q=80"
+                src={user.isLoggedIn ? user.avatarUrl : 'https://images.unsplash.com/photo-1595273670150-bd0c3c392e46?w=100&auto=format&fit=crop&q=80'}
                 alt="Farmer Avatar"
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  (e.target as HTMLElement).style.display = 'none';
+                  (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1595273670150-bd0c3c392e46?w=100&auto=format&fit=crop&q=80';
                 }}
               />
             </div>
-            <span className="hidden md:inline text-xs font-semibold text-gray-900">
-              {t('hiFarmer', 'Hi, Farmer')}
+            <span className="hidden md:inline text-xs font-bold text-gray-900">
+              {user.isLoggedIn ? `Hi, ${user.name.split(' ')[0]}` : t('hiFarmer', 'Hi, Farmer')}
             </span>
             <ChevronDown className="w-3 h-3 text-gray-400" />
           </div>

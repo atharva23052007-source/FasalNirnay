@@ -12,19 +12,21 @@ export const SellChannels: React.FC = () => {
     switch (type) {
       case 'blinkit':
         return (
-          <img
-            src="https://images.unsplash.com/photo-1580674684081-7617fbf3d745?w=300&auto=format&fit=crop&q=80"
-            alt="Blinkit Quick Delivery Scooter"
-            className="h-20 object-contain mx-auto"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = 'https://illustrations.pouch.dev/scooter.png';
-            }}
-          />
+          <div className="h-20 flex items-center justify-center overflow-hidden">
+            <img
+              src="/assets/scooter.jpg"
+              alt="Blinkit Quick Commerce Delivery Rider"
+              className="h-full max-w-full object-contain drop-shadow-sm"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1580674684081-7617fbf3d745?w=300&auto=format&fit=crop&q=80';
+              }}
+            />
+          </div>
         );
       case 'swiggy':
         return (
           <div className="h-20 flex items-center justify-center">
-            <div className="w-16 h-16 rounded-2xl bg-orange-100/70 border border-orange-200 flex items-center justify-center relative">
+            <div className="w-16 h-16 rounded-2xl bg-orange-100/70 border border-orange-200 flex items-center justify-center relative shadow-2xs">
               <ShoppingBag className="w-8 h-8 text-orange-600" />
               <span className="absolute -top-1 -right-1 text-sm">🥦</span>
             </div>
@@ -33,16 +35,16 @@ export const SellChannels: React.FC = () => {
       case 'mandi':
         return (
           <div className="h-20 flex items-center justify-center">
-            <div className="w-16 h-16 rounded-2xl bg-emerald-100/70 border border-emerald-200 flex items-center justify-center relative">
+            <div className="w-16 h-16 rounded-2xl bg-emerald-100/70 border border-emerald-200 flex items-center justify-center relative shadow-2xs">
               <Store className="w-8 h-8 text-emerald-700" />
-              <span className="absolute -top-1 -right-1 text-xs bg-emerald-700 text-white font-extrabold px-1 rounded">eNAM</span>
+              <span className="absolute -top-1 -right-1 text-[10px] bg-emerald-700 text-white font-extrabold px-1 py-0.5 rounded">eNAM</span>
             </div>
           </div>
         );
       case 'direct':
         return (
           <div className="h-20 flex items-center justify-center">
-            <div className="w-16 h-16 rounded-2xl bg-blue-100/70 border border-blue-200 flex items-center justify-center relative">
+            <div className="w-16 h-16 rounded-2xl bg-blue-100/70 border border-blue-200 flex items-center justify-center relative shadow-2xs">
               <Users className="w-8 h-8 text-blue-600" />
               <span className="absolute -bottom-1 -right-1 text-sm">🤝</span>
             </div>
