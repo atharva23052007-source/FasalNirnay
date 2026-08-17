@@ -55,7 +55,7 @@ export const Navbar: React.FC = () => {
         </div>
 
         {/* Navigation Items */}
-        <nav className="hidden lg:flex items-center gap-6 h-full">
+        <nav className="hidden lg:flex items-center gap-4 xl:gap-6 h-full">
           {navItems.map(item => {
             const isActive = activeTab === item.id;
             return (
@@ -76,7 +76,7 @@ export const Navbar: React.FC = () => {
         </nav>
 
         {/* Right Controls */}
-        <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0">
 
           {/* Location Selector */}
           <div className="relative flex items-center h-9">
@@ -87,7 +87,7 @@ export const Navbar: React.FC = () => {
                 const loc = mockLocations.find(l => l.id === e.target.value);
                 if (loc) setSelectedLocation(loc);
               }}
-              className="h-full appearance-none pl-8 pr-8 rounded-full border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#167A42]/20 transition-all shadow-sm leading-none"
+              className="h-full appearance-none pl-8 pr-8 rounded-full border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#167A42]/20 transition-all shadow-sm leading-none max-w-[120px] xl:max-w-none truncate"
             >
               {mockLocations.map(loc => (
                 <option key={loc.id} value={loc.id}>
@@ -99,7 +99,7 @@ export const Navbar: React.FC = () => {
           </div>
 
           {/* Weather Pill */}
-          <div className="hidden sm:flex items-center gap-1.5 px-3.5 h-9 rounded-full bg-gray-50 border border-gray-100 text-xs font-medium">
+          <div className="hidden xl:flex items-center gap-1.5 px-3.5 h-9 rounded-full bg-gray-50 border border-gray-100 text-xs font-medium flex-shrink-0">
             <span>☀️</span>
             <span className="font-bold text-gray-900">26°C</span>
             <span className="text-gray-300">|</span>
@@ -112,7 +112,7 @@ export const Navbar: React.FC = () => {
             <select
               value={language}
               onChange={(e) => setLanguage(e.target.value as Language)}
-              className="h-full appearance-none pl-8 pr-8 rounded-full border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#167A42]/20 transition-all shadow-sm leading-none"
+              className="h-full appearance-none pl-8 pr-8 rounded-full border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#167A42]/20 transition-all shadow-sm leading-none max-w-[100px] xl:max-w-none truncate"
             >
               <option value="en">English</option>
               <option value="hi">हिंदी (Hindi)</option>
@@ -140,10 +140,10 @@ export const Navbar: React.FC = () => {
           </div>
 
           {/* User Profile & Role Badge */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-shrink-0">
             <div
               onClick={openProfileModal}
-              className="flex items-center gap-2 cursor-pointer hover:bg-emerald-50 p-1 px-2.5 rounded-full transition-all border border-emerald-100 hover:border-emerald-300 shadow-sm"
+              className="flex items-center gap-2 cursor-pointer hover:bg-emerald-50 p-1 px-2.5 rounded-full transition-all border border-emerald-100 hover:border-emerald-300 shadow-sm flex-shrink-0"
               title="Account & Profile Details"
             >
               <div className="w-7 h-7 rounded-full overflow-hidden border border-emerald-300 bg-gray-100 flex-shrink-0">
