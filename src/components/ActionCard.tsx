@@ -1,6 +1,6 @@
 import React from 'react';
 import { CropRecommendation } from '../types';
-import { useLanguage } from '../context/LanguageContext';
+import { useLanguage, AutoTranslate } from '../context/LanguageContext';
 import { useApp } from '../context/AppContext';
 import { TrendingUp, TrendingDown, AlertTriangle, Lightbulb, ArrowRight, Scale } from 'lucide-react';
 
@@ -82,32 +82,26 @@ export const ActionCard: React.FC<ActionCardProps> = ({ crop }) => {
 
   const adviceStyles = getAdviceStyles();
   const timelineStyles = getTimelineStyles();
-  const cropName = t(crop.cropNameKey, crop.defaultCropName);
-  const actionText = t(crop.actionKey, crop.defaultAction);
-  const benefitText = t(crop.benefitTextKey, crop.defaultBenefitText);
-  const sellTimelineText = t(crop.sellTimelineKey, crop.defaultSellTimeline);
-  const rationaleText = t(crop.rationaleKey, crop.defaultRationale);
 
   return (
     <div
-      className={`bg-white border border-gray-200 rounded-xl p-4 sm:p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1.2fr_1.3fr_1.1fr_1.5fr_1fr] items-center gap-4 sm:gap-5 hover:shadow-md transition-all ${getBorderColor()}`}
+      className={`bg-white border border-gray-200 rounded-xl p-4 sm:p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1.2fr_1.3fr_1.1fr_1.5fr_1fr] items-center gap-4 sm:gap-5 hover:shadow-md transition-all font-sans ${getBorderColor()}`}
     >
       {/* Col 1: Crop Info */}
       <div className="flex items-center gap-3.5">
         <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0 flex items-center justify-center p-0.5">
           <img
             src={crop.image}
-            alt={cropName}
+            alt={crop.defaultCropName}
             className="w-full h-full object-cover rounded-full"
             onError={(e) => {
-              // Fallback SVG image if Unsplash fails
               (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=200&auto=format&fit=crop&q=80';
             }}
           />
         </div>
         <div className="flex flex-col gap-0.5">
           <h3 className="font-heading font-bold text-lg text-gray-900 leading-tight">
-            {cropName}
+            <AutoTranslate text={t(crop.cropNameKey, crop.defaultCropName)} />
           </h3>
           <div className="flex flex-col text-xs text-gray-600">
             <span className="font-semibold text-gray-800 flex items-center gap-1">
@@ -115,7 +109,7 @@ export const ActionCard: React.FC<ActionCardProps> = ({ crop }) => {
               {crop.quantityKg.toLocaleString()} kg
             </span>
             <span className="text-gray-500 text-[11.5px]">
-              {t('harvested', 'Harvested')}: {crop.harvestDate}
+              {t('harvested', 'Harvested')}: <AutoTranslate text={crop.harvestDate} />
             </span>
           </div>
         </div>
@@ -127,10 +121,10 @@ export const ActionCard: React.FC<ActionCardProps> = ({ crop }) => {
           {t('aiSays', 'AI SAYS')}
         </span>
         <h4 className={`font-heading font-extrabold text-lg tracking-tight leading-tight my-0.5 ${adviceStyles.action}`}>
-          {actionText}
+          <AutoTranslate text={t(crop.actionKey, crop.defaultAction)} />
         </h4>
         <p className={`text-xs font-medium ${adviceStyles.benefit}`}>
-          {benefitText}
+          <AutoTranslate text={t(crop.benefitTextKey, crop.defaultBenefitText)} />
         </p>
       </div>
 
@@ -140,9 +134,15 @@ export const ActionCard: React.FC<ActionCardProps> = ({ crop }) => {
           {timelineStyles.icon}
         </div>
         <div className="flex flex-col leading-tight">
-          <span className="text-xs text-gray-500 font-medium">{sellTimelineText}</span>
-          <span className="font-heading font-extrabold text-base text-gray-900">{crop.sellDateText}</span>
-          <span className="text-[11.5px] text-gray-600 font-semibold">{t(crop.sellTimeDetail.toLowerCase(), crop.sellTimeDetail)}</span>
+          <span className="text-xs text-gray-500 font-medium">
+            <AutoTranslate text={t(crop.sellTimelineKey, crop.defaultSellTimeline)} />
+          </span>
+          <span className="font-heading font-extrabold text-base text-gray-900">
+            <AutoTranslate text={crop.sellDateText} />
+          </span>
+          <span className="text-[11.5px] text-gray-600 font-semibold">
+            <AutoTranslate text={t(crop.sellTimeDetail.toLowerCase(), crop.sellTimeDetail)} />
+          </span>
         </div>
       </div>
 
@@ -153,7 +153,7 @@ export const ActionCard: React.FC<ActionCardProps> = ({ crop }) => {
           <span>{t('why', 'Why?')}</span>
         </div>
         <p className="text-xs text-gray-700 leading-snug">
-          {rationaleText}
+          <AutoTranslate text={t(crop.rationaleKey, crop.defaultRationale)} />
         </p>
       </div>
 
@@ -167,7 +167,6 @@ export const ActionCard: React.FC<ActionCardProps> = ({ crop }) => {
           <ArrowRight className="w-3.5 h-3.5" />
         </button>
       </div>
-
     </div>
   );
 };

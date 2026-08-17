@@ -1,0 +1,80 @@
+{
+  "nav": {
+    "brandName": "FasalNirnay",
+    "brandTagline": "AI Crop Decision Engine",
+    "dashboard": "Dashboard",
+    "myLots": "My Lots",
+    "marketPrices": "Market Prices",
+    "storageLocator": "Storage Locator",
+    "orders": "Orders",
+    "reports": "Reports",
+    "hiFarmer": "Hi, Farmer"
+  },
+  "auth": {
+    "createAccount": "Create Account",
+    "welcomeBack": "Welcome Back",
+    "loginSubtitle": "Enter your credentials to access your FasalNirnay dashboard",
+    "signupSubtitle": "Sign up with your location to get tailored AI crop recommendations",
+    "selectAccessRole": "Select Your Access Role:",
+    "farmerRole": "Farmer",
+    "farmerRoleSubtitle": "Farmer / Producer",
+    "ngoFpoRole": "NGO/FPO",
+    "ngoFpoRoleSubtitle": "NGO / FPO Alliance",
+    "adminRole": "Admin",
+    "adminRoleSubtitle": "Administrator",
+    "fullNameLabel": "Full Name / Farmer Name:",
+    "phoneEmailLabel": "Phone Number or Email Address:",
+    "landHoldingLabel": "Land Holding (Acres):",
+    "farmLocationLabel": "Farm / Village Location (LocationIQ GPS):",
+    "passwordLabel": "Password:",
+    "confirmPasswordLabel": "Confirm Password:",
+    "logInBtn": "Log In as",
+    "registerBtn": "Register & Access Dashboard",
+    "prefLangLabel": "Preferred App Language / भाषा निवडा:",
+    "detectGps": "Detect GPS",
+    "autoFillDemo": "Auto-fill Demo Credentials",
+    "byProceeding": "By proceeding, you agree to FasalNirnay AI Terms of Service & Privacy Policy.",
+    "logInTab": "Log In",
+    "signUpTab": "Sign Up"
+  },
+  "hero": {
+    "goodMorning": "Good Morning, Farmer!",
+    "subtitle1": "Get the best value for your harvest",
+    "subtitle2": "— in one place.",
+    "desc": "AI-driven recommendations to sell smarter and order what you need.",
+    "partlyCloudy": "Partly Cloudy",
+    "locationNashik": "Nashik, Maharashtra"
+  },
+  "market": {
+    "title": "Today's Market Overview",
+    "sourceAgmarknet": "Source: AGMARKNET",
+    "modalPrice": "Modal Price",
+    "vsYesterday": "vs yesterday",
+    "arrivalQty": "Arrival Quantity (Today)",
+    "tomato": "Tomato",
+    "onion": "Onion",
+    "leafyVegetables": "Leafy Vegetables"
+  },
+  "actions": {
+    "title": "Today's Best Actions",
+    "subtitle": "AI suggests the best action to get you maximum profit.",
+    "whyTheseActions": "Why these actions?",
+    "harvested": "Harvested",
+    "aiSays": "AI SAYS",
+    "sellBy": "Sell by",
+    "sellToday": "SELL TODAY",
+    "processToday": "PROCESS TODAY",
+    "waitDays": "WAIT 2 DAYS",
+    "morning": "Morning",
+    "evening": "Evening",
+    "afternoon": "Afternoon",
+    "why": "Why?",
+    "seeDetails": "See Details"
+  },
+  "common": {
+    "loading": "Loading...",
+    "error": "An error occurred",
+    "close": "Close",
+    "confirm": "Confirm"
+  }
+}

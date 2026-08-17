@@ -141,12 +141,22 @@ export interface ReportSummary {
 
 // --- USER & AUTH TYPES ---
 
+export type UserRole = 'Farmer' | 'Admin' | 'NGO/FPO';
+
 export interface FarmerUser {
+  id?: string;
   name: string;
   mobile: string;
+  emailOrPhone?: string;
+  role: UserRole;
   location: string;
+  coordinates?: { lat: number; lon: number };
   farmSizeAcres: number;
   mainCrops: string[];
   isLoggedIn: boolean;
   avatarUrl: string;
+  token?: string;
+  preferredLanguage?: Language;
 }
+
+

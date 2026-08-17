@@ -1,0 +1,80 @@
+{
+  "nav": {
+    "brandName": "फ़सलनिर्णय",
+    "brandTagline": "एआई फसल निर्णय इंजन",
+    "dashboard": "डैशबोर्ड",
+    "myLots": "मेरे लॉट",
+    "marketPrices": "बाजार भाव",
+    "storageLocator": "कोल्ड स्टोरेज लोकेटर",
+    "orders": "ऑर्डर",
+    "reports": "रिपोर्ट्स",
+    "hiFarmer": "नमस्ते, किसान"
+  },
+  "auth": {
+    "createAccount": "खाता बनाएं",
+    "welcomeBack": "पुनः स्वागत है",
+    "loginSubtitle": "अपने फ़सलनिर्णय डैशबोर्ड तक पहुंचने के लिए लॉगिन करें",
+    "signupSubtitle": "अनुकूलित एआई फसल सुझाव पाने के लिए अपना स्थान दर्ज करें",
+    "selectAccessRole": "अपनी भूमिका चुनें:",
+    "farmerRole": "किसान",
+    "farmerRoleSubtitle": "किसान / उत्पादक",
+    "ngoFpoRole": "एनजीओ/एफपीओ",
+    "ngoFpoRoleSubtitle": "एनजीओ / एफपीओ संगठन",
+    "adminRole": "प्रशासक",
+    "adminRoleSubtitle": "सिस्टम प्रशासक",
+    "fullNameLabel": "पूरा नाम / किसान नाम:",
+    "phoneEmailLabel": "फोन नंबर या ईमेल पता:",
+    "landHoldingLabel": "जमीन (एकड़):",
+    "farmLocationLabel": "खेत / गांव का स्थान (LocationIQ GPS):",
+    "passwordLabel": "पासवर्ड:",
+    "confirmPasswordLabel": "पासवर्ड की पुष्टि करें:",
+    "logInBtn": "लॉगइन करें:",
+    "registerBtn": "पंजीकरण करें और डैशबोर्ड खोलें",
+    "prefLangLabel": "अपनी पसंदीदा भाषा चुनें:",
+    "detectGps": "जीपीएस स्थान पहचानें",
+    "autoFillDemo": "डेमो क्रेडेंशियल भरें",
+    "byProceeding": "आगे बढ़ने से आप फ़सलनिर्णय एआई की सेवा शर्तों और गोपनीयता नीति से सहमत होते हैं।",
+    "logInTab": "लॉग इन",
+    "signUpTab": "साइन अप"
+  },
+  "hero": {
+    "goodMorning": "शुभ प्रभात, किसान भाई! ☀️",
+    "subtitle1": "अपनी उपज का सर्वश्रेष्ठ मूल्य प्राप्त करें",
+    "subtitle2": "— एक ही स्थान पर।",
+    "desc": "स्मार्ट बिक्री के लिए एआई-संचालित सिफारिशें।",
+    "partlyCloudy": "आंशिक रूप से बादल",
+    "locationNashik": "नासिक, महाराष्ट्र"
+  },
+  "market": {
+    "title": "आज की मंडी रिपोर्ट",
+    "sourceAgmarknet": "स्रोत: एगमार्कनेट",
+    "modalPrice": "मॉडल मूल्य",
+    "vsYesterday": "कल की तुलना में",
+    "arrivalQty": "आवक मात्रा (आज)",
+    "tomato": "टमाटर",
+    "onion": "प्याज",
+    "leafyVegetables": "हरी पत्तेदार सब्जियां"
+  },
+  "actions": {
+    "title": "आज के सर्वोत्तम उपाय",
+    "subtitle": "अधिकतम लाभ दिलाने के लिए एआई की सर्वश्रेष्ठ सलाह।",
+    "whyTheseActions": "ये सुझाव क्यों?",
+    "harvested": "कटाई की तिथि",
+    "aiSays": "एआई की सलाह",
+    "sellBy": "बेचने की तिथि",
+    "sellToday": "आज ही बेचें",
+    "processToday": "आज ही प्रोसेसिंग करें",
+    "waitDays": "2 दिन प्रतीक्षा करें",
+    "morning": "सुबह",
+    "evening": "शाम",
+    "afternoon": "दोपहर",
+    "why": "कारण?",
+    "seeDetails": "विवरण देखें"
+  },
+  "common": {
+    "loading": "लोड हो रहा है...",
+    "error": "एक त्रुटि आई",
+    "close": "बंद करें",
+    "confirm": "पुष्टि करें"
+  }
+}
