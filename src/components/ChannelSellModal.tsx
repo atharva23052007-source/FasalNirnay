@@ -3,14 +3,29 @@ import { useApp } from '../context/AppContext';
 import { X, CheckCircle, Truck, MapPin, Package } from 'lucide-react';
 
 export const ChannelSellModal: React.FC = () => {
-  const { selectedChannelModal, setSelectedChannelModal, selectedLocation } = useApp();
-  const [selectedCrop, setSelectedCrop] = useState('Tomato — 1,000 kg');
+  const { selectedChannelModal, setSelectedChannelModal, selectedLocation, selectedCropToSell } = useApp();
+  const [selectedCrop, setSelectedCrop] = useState(selectedCropToSell ? `${selectedCropToSell.defaultCropName} — ${selectedCropToSell.quantityKg} kg` : 'Tomato — 1,000 kg');
   const [address, setAddress] = useState(`Farm #42, Dindori Road, ${selectedLocation.name}`);
   const [isSuccess, setIsSuccess] = useState(false);
 
   if (!selectedChannelModal) return null;
 
   const channel = selectedChannelModal;
+
+  const getDynamicPrice = () => {
+    if (!selectedCropToSell) return null;
+    const cropName = selectedCropToSell.defaultCropName;
+    const basePrice = selectedCropToSell.currentPriceKg || 18;
+    switch (channel.type) {
+      case 'blinkit': return { price: (basePrice * 1.3).toFixed(1), name: cropName };
+      case 'swiggy': return { price: (basePrice * 1.25).toFixed(1), name: cropName };
+      case 'mandi': return { price: (basePrice * 0.95).toFixed(1), name: cropName };
+      case 'direct': return { price: (basePrice * 1.1).toFixed(1), name: cropName };
+      default: return { price: basePrice.toFixed(1), name: cropName };
+    }
+  };
+
+  const dynamicPrice = getDynamicPrice();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -23,7 +38,7 @@ export const ChannelSellModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl max-w-lg w-full p-6 relative shadow-2xl animate-in fade-in zoom-in-95 duration-200">
+      <div className="bg-white rounded-2xl max-w-lg w-full p-6 relative shadow-2xl animate-in fade-in zoom-in-95 duration-200" style={{ borderTop: `8px solid ${channel.themeColor}` }}>
         
         {/* Close Button */}
         <button
@@ -47,16 +62,32 @@ export const ChannelSellModal: React.FC = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             
             <div className="flex items-center gap-3 border-b border-gray-100 pb-3">
-              <div className="w-10 h-10 rounded-xl bg-gray-50 border border-gray-200 flex items-center justify-center">
-                <Truck className="w-5 h-5 text-gray-700" />
+              <div 
+                className="w-12 h-12 rounded-xl flex items-center justify-center text-white"
+                style={{ backgroundColor: channel.themeColor }}
+              >
+                <Truck className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="font-heading font-extrabold text-lg text-gray-900">
+                <h3 className="font-heading font-extrabold text-2xl text-gray-900">
                   Sell on {channel.name}
                 </h3>
-                <p className="text-xs text-gray-500">{channel.description}</p>
+                <p className="text-sm text-gray-500">{channel.description}</p>
               </div>
             </div>
+
+            {dynamicPrice && (
+              <div 
+                className="rounded-2xl p-4 flex flex-col items-center justify-center border text-center shadow-inner"
+                style={{ backgroundColor: `${channel.themeColor}15`, borderColor: `${channel.themeColor}30` }}
+              >
+                <span className="text-xs font-bold uppercase tracking-wider text-gray-600 mb-1">Guaranteed Payout Rate</span>
+                <div className="font-heading font-black text-4xl" style={{ color: channel.themeColor }}>
+                  ₹{dynamicPrice.price}<span className="text-xl">/kg</span>
+                </div>
+                <span className="text-sm font-semibold text-gray-700 mt-1">for {dynamicPrice.name}</span>
+              </div>
+            )}
 
             <div className="space-y-3">
               <div>
@@ -66,8 +97,14 @@ export const ChannelSellModal: React.FC = () => {
                 <select
                   value={selectedCrop}
                   onChange={(e) => setSelectedCrop(e.target.value)}
-                  className="w-full text-xs font-medium border border-gray-200 rounded-xl p-3 bg-gray-50 focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full text-sm font-bold border border-gray-200 rounded-xl p-3 bg-gray-50 focus:ring-2 outline-none"
+                  style={{ '--tw-ring-color': channel.themeColor } as React.CSSProperties}
                 >
+                  {selectedCropToSell && (
+                    <option value={`${selectedCropToSell.defaultCropName} — ${selectedCropToSell.quantityKg} kg`}>
+                      {selectedCropToSell.defaultCropName} — {selectedCropToSell.quantityKg} kg (Selected)
+                    </option>
+                  )}
                   <option value="Tomato — 1,000 kg">Tomato — 1,000 kg (Harvested 20 May)</option>
                   <option value="Onion — 2,000 kg">Onion — 2,000 kg (Harvested 21 May)</option>
                   <option value="Leafy Vegetables — 750 kg">Leafy Vegetables — 750 kg (Harvested 21 May)</option>
@@ -82,7 +119,8 @@ export const ChannelSellModal: React.FC = () => {
                   type="text"
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  className="w-full text-xs font-medium border border-gray-200 rounded-xl p-3 bg-gray-50 focus:ring-2 focus:ring-emerald-500 outline-none"
+                  className="w-full text-sm font-bold border border-gray-200 rounded-xl p-3 bg-gray-50 focus:ring-2 outline-none"
+                  style={{ '--tw-ring-color': channel.themeColor } as React.CSSProperties}
                   required
                 />
               </div>
@@ -94,7 +132,7 @@ export const ChannelSellModal: React.FC = () => {
                 </div>
                 <div className="flex justify-between">
                   <span>Guaranteed Payment Window:</span>
-                  <span className="text-emerald-700 font-bold">Within 24 Hours</span>
+                  <span className="font-bold" style={{ color: channel.themeColor }}>Within 24 Hours</span>
                 </div>
                 <div className="flex justify-between">
                   <span>Logistics Transport:</span>
@@ -105,7 +143,8 @@ export const ChannelSellModal: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full py-3 rounded-xl font-bold text-xs text-white shadow-md transition-all bg-[#167A42] hover:bg-[#126335]"
+              className="w-full py-4 rounded-xl font-black text-sm text-white shadow-lg transition-transform hover:scale-[1.02]"
+              style={{ backgroundColor: channel.themeColor }}
             >
               Confirm Dispatch Order & Request Pickup
             </button>
