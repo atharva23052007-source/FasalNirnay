@@ -2,7 +2,7 @@ import React from 'react';
 import { CropRecommendation } from '../types';
 import { useLanguage, AutoTranslate } from '../context/LanguageContext';
 import { useApp } from '../context/AppContext';
-import { TrendingUp, TrendingDown, AlertTriangle, Lightbulb, ArrowRight, Scale } from 'lucide-react';
+import { Lightbulb, ArrowRight, Scale } from 'lucide-react';
 
 interface ActionCardProps {
   crop: CropRecommendation;
@@ -14,9 +14,9 @@ export const ActionCard: React.FC<ActionCardProps> = ({ crop }) => {
 
   const getBorderColor = () => {
     switch (crop.actionType) {
-      case 'green': return 'border-l-4 border-l-emerald-600';
-      case 'red': return 'border-l-4 border-l-red-600';
-      case 'orange': return 'border-l-4 border-l-amber-500';
+      case 'green': return 'border-t-4 border-t-emerald-600';
+      case 'red': return 'border-t-4 border-t-red-600';
+      case 'orange': return 'border-t-4 border-t-amber-500';
     }
   };
 
@@ -46,29 +46,6 @@ export const ActionCard: React.FC<ActionCardProps> = ({ crop }) => {
     }
   };
 
-  const getTimelineStyles = () => {
-    switch (crop.actionType) {
-      case 'green':
-        return {
-          bg: 'bg-[#F8FDF9]',
-          iconBg: 'bg-emerald-100/70 text-emerald-700',
-          icon: <TrendingUp className="w-5.5 h-5.5 text-emerald-700" />,
-        };
-      case 'red':
-        return {
-          bg: 'bg-[#FFF9F9]',
-          iconBg: 'bg-red-100/70 text-red-700',
-          icon: <TrendingDown className="w-5.5 h-5.5 text-red-700" />,
-        };
-      case 'orange':
-        return {
-          bg: 'bg-[#FFFDF5]',
-          iconBg: 'bg-amber-100/80 text-amber-700',
-          icon: <AlertTriangle className="w-5.5 h-5.5 text-amber-700" />,
-        };
-    }
-  };
-
   const getButtonStyles = () => {
     switch (crop.actionType) {
       case 'green':
@@ -81,90 +58,87 @@ export const ActionCard: React.FC<ActionCardProps> = ({ crop }) => {
   };
 
   const adviceStyles = getAdviceStyles();
-  const timelineStyles = getTimelineStyles();
+  const cropName = t(crop.cropNameKey, crop.defaultCropName);
+  const actionText = t(crop.actionKey, crop.defaultAction);
+  const benefitText = t(crop.benefitTextKey, crop.defaultBenefitText);
+  const sellTimelineText = t(crop.sellTimelineKey, crop.defaultSellTimeline);
+  const rationaleText = t(crop.rationaleKey, crop.defaultRationale);
 
   return (
     <div
-      className={`bg-white border border-gray-200 rounded-xl p-4 sm:p-5 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[1.2fr_1.3fr_1.1fr_1.5fr_1fr] items-center gap-4 sm:gap-5 hover:shadow-md transition-all font-sans ${getBorderColor()}`}
+      className={`bg-white border border-gray-200 rounded-xl p-5 flex flex-col hover:shadow-md transition-all h-full font-sans ${getBorderColor()}`}
     >
-      {/* Col 1: Crop Info */}
-      <div className="flex items-center gap-3.5">
-        <div className="w-14 h-14 rounded-full overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0 flex items-center justify-center p-0.5">
-          <img
-            src={crop.image}
-            alt={crop.defaultCropName}
-            className="w-full h-full object-cover rounded-full"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=200&auto=format&fit=crop&q=80';
-            }}
-          />
-        </div>
-        <div className="flex flex-col gap-0.5">
-          <h3 className="font-heading font-bold text-lg text-gray-900 leading-tight">
-            <AutoTranslate text={t(crop.cropNameKey, crop.defaultCropName)} />
-          </h3>
-          <div className="flex flex-col text-xs text-gray-600">
-            <span className="font-semibold text-gray-800 flex items-center gap-1">
-              <Scale className="w-3 h-3 text-gray-500" />
-              {crop.quantityKg.toLocaleString()} kg
-            </span>
-            <span className="text-gray-500 text-[11.5px]">
-              {t('harvested', 'Harvested')}: <AutoTranslate text={crop.harvestDate} />
-            </span>
+      {/* Header: Crop Info */}
+      <div className="flex items-start justify-between gap-3 mb-4">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-full overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0 flex items-center justify-center p-0.5">
+            <img
+              src={crop.image}
+              alt={cropName}
+              className="w-full h-full object-cover rounded-full"
+              onError={(e) => {
+                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=200&auto=format&fit=crop&q=80';
+              }}
+            />
           </div>
+          <div className="flex flex-col gap-0.5">
+            <h3 className="font-heading font-bold text-lg text-gray-900 leading-tight">
+              <AutoTranslate text={cropName} />
+            </h3>
+            <div className="flex items-center text-xs text-gray-600 gap-2">
+              <span className="font-semibold text-gray-800 flex items-center gap-1">
+                <Scale className="w-3 h-3 text-gray-500" />
+                {crop.quantityKg.toLocaleString()} kg
+              </span>
+              <span className="text-gray-400">•</span>
+              <span className="text-gray-500 text-[11.5px]">
+                {t('harvested', 'Harvested')}: <AutoTranslate text={crop.harvestDate} />
+              </span>
+            </div>
+          </div>
+        </div>
+        <div className={`px-2.5 py-1 rounded-md text-[10px] font-extrabold tracking-wider uppercase ${adviceStyles.bg} ${adviceStyles.label}`}>
+          {t('aiSays', 'AI SAYS')}
         </div>
       </div>
 
-      {/* Col 2: AI Advice Box */}
-      <div className={`rounded-xl p-3.5 px-4 flex flex-col justify-center min-h-[76px] ${adviceStyles.bg}`}>
-        <span className={`text-[10.5px] font-extrabold tracking-wider ${adviceStyles.label}`}>
-          {t('aiSays', 'AI SAYS')}
-        </span>
-        <h4 className={`font-heading font-extrabold text-lg tracking-tight leading-tight my-0.5 ${adviceStyles.action}`}>
-          <AutoTranslate text={t(crop.actionKey, crop.defaultAction)} />
+      {/* Action Advice */}
+      <div className="flex flex-col gap-1 mb-4">
+        <h4 className={`font-heading font-extrabold text-2xl tracking-tight leading-tight ${adviceStyles.action}`}>
+          <AutoTranslate text={actionText} />
         </h4>
-        <p className={`text-xs font-medium ${adviceStyles.benefit}`}>
-          <AutoTranslate text={t(crop.benefitTextKey, crop.defaultBenefitText)} />
+        <p className={`text-sm font-medium ${adviceStyles.benefit}`}>
+          <AutoTranslate text={benefitText} />
         </p>
       </div>
 
-      {/* Col 3: Timeline Box */}
-      <div className={`rounded-xl p-3 px-4 flex items-center gap-3 min-h-[76px] ${timelineStyles.bg}`}>
-        <div className={`w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 ${timelineStyles.iconBg}`}>
-          {timelineStyles.icon}
-        </div>
-        <div className="flex flex-col leading-tight">
-          <span className="text-xs text-gray-500 font-medium">
-            <AutoTranslate text={t(crop.sellTimelineKey, crop.defaultSellTimeline)} />
-          </span>
-          <span className="font-heading font-extrabold text-base text-gray-900">
-            <AutoTranslate text={crop.sellDateText} />
-          </span>
-          <span className="text-[11.5px] text-gray-600 font-semibold">
-            <AutoTranslate text={t(crop.sellTimeDetail.toLowerCase(), crop.sellTimeDetail)} />
-          </span>
-        </div>
-      </div>
-
-      {/* Col 4: Rationale Box */}
-      <div className="flex flex-col gap-1 pr-2">
-        <div className="flex items-center gap-1 text-xs font-bold text-gray-900">
+      {/* Rationale */}
+      <div className="flex flex-col gap-1.5 flex-grow mb-5">
+        <div className="flex items-center gap-1.5 text-xs font-bold text-gray-900">
           <Lightbulb className="w-4 h-4 text-amber-500 fill-amber-400" />
           <span>{t('why', 'Why?')}</span>
         </div>
-        <p className="text-xs text-gray-700 leading-snug">
-          <AutoTranslate text={t(crop.rationaleKey, crop.defaultRationale)} />
+        <p className="text-sm text-gray-700 leading-relaxed">
+          <AutoTranslate text={rationaleText} />
         </p>
       </div>
 
-      {/* Col 5: Action Button */}
-      <div className="flex justify-start lg:justify-end">
+      {/* Action Button & Timeline */}
+      <div className="pt-4 border-t border-gray-100 flex items-center justify-between mt-auto">
+        <div className="flex flex-col">
+          <span className="text-xs text-gray-500 font-medium">
+            <AutoTranslate text={sellTimelineText} />
+          </span>
+          <span className="font-heading font-bold text-sm text-gray-900">
+            <AutoTranslate text={crop.sellDateText} />
+          </span>
+        </div>
         <button
           onClick={() => setSelectedCropModal(crop)}
-          className={`inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold border transition-all ${getButtonStyles()}`}
+          className={`inline-flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-sm font-bold border transition-all ${getButtonStyles()}`}
         >
           <span>{t('seeDetails', 'See Details')}</span>
-          <ArrowRight className="w-3.5 h-3.5" />
+          <ArrowRight className="w-4 h-4" />
         </button>
       </div>
     </div>
