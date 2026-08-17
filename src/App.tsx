@@ -8,6 +8,7 @@ import { MarketPricesPage } from './pages/MarketPricesPage';
 import { StorageLocatorPage } from './pages/StorageLocatorPage';
 import { OrdersPage } from './pages/OrdersPage';
 import { ReportsPage } from './pages/ReportsPage';
+import { SellPage } from './pages/SellPage';
 import { AuthPage } from './pages/AuthPage';
 import { CropDetailModal } from './components/CropDetailModal';
 import { ChannelSellModal } from './components/ChannelSellModal';
@@ -28,8 +29,10 @@ const MainLayout: React.FC = () => {
     switch (activeTab) {
       case 'Dashboard':
         return <DashboardPage />;
-      case 'My Lots':
+      case 'Sellings':
         return <MyLotsPage />;
+      case 'Sell':
+        return <SellPage />;
       case 'Market Prices':
         return <MarketPricesPage />;
       case 'Storage Locator':

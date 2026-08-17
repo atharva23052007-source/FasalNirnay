@@ -62,6 +62,7 @@ export interface BuyerChannel {
   buttonText: string;
   themeColor: string;
   description: string;
+  trendingPriceMessage?: string;
 }
 
 export interface NotificationItem {
@@ -82,8 +83,10 @@ export interface FarmerLot {
   grade: 'Grade A (Premium)' | 'Grade B (Standard)' | 'Grade C (Processing)';
   storageStatus: 'On Farm' | 'In Cold Storage' | 'Dispatched';
   location: string;
+  condition: string;
   estValueRs: number;
   image: string;
+  recommendation?: CropRecommendation;
 }
 
 export interface StorageFacility {
