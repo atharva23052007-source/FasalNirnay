@@ -1,10 +1,10 @@
 import React from 'react';
 import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
-import { Plus, Scale, MapPin, Calendar, Warehouse, Tag } from 'lucide-react';
+import { Plus, Scale, MapPin, Calendar, Warehouse, Tag, Trash2 } from 'lucide-react';
 
 export const MyLotsPage: React.FC = () => {
-  const { farmerLots, setIsAddLotModalOpen } = useApp();
+  const { farmerLots, setIsAddLotModalOpen, deleteFarmerLot } = useApp();
   const { t } = useLanguage();
 
   return (
@@ -78,16 +78,28 @@ export const MyLotsPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="flex items-center justify-between pt-1 text-xs">
+            <div className="flex items-center justify-between pt-1 text-xs border-t border-gray-100 mt-2 pt-3">
               <span className="text-gray-500 flex items-center gap-1">
                 <MapPin className="w-3.5 h-3.5 text-gray-400" /> {lot.location}
               </span>
-              <button
-                onClick={() => alert(`AI analysis refreshed for ${lot.cropName}`)}
-                className="text-[#167A42] font-bold hover:underline"
-              >
-                Analyze Lot →
-              </button>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => {
+                    if (confirm(`Are you sure you want to remove the lot for ${lot.cropName}?`)) {
+                      deleteFarmerLot(lot.id);
+                    }
+                  }}
+                  className="text-red-600 hover:text-red-800 font-bold transition-all text-[11px] flex items-center gap-0.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Remove
+                </button>
+                <button
+                  onClick={() => alert(`AI analysis refreshed for ${lot.cropName}`)}
+                  className="text-[#167A42] font-bold hover:underline"
+                >
+                  Analyze Lot →
+                </button>
+              </div>
             </div>
           </div>
         ))}

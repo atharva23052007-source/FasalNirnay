@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { createContext, useContext, useState, useEffect } from 'react';
 import {
   CropRecommendation,
   BuyerChannel,
@@ -36,6 +36,7 @@ interface AppContextType {
   // Page Data & Actions
   farmerLots: FarmerLot[];
   addFarmerLot: (lot: Omit<FarmerLot, 'id'>) => void;
+  deleteFarmerLot: (id: string) => void;
   storageFacilities: StorageFacility[];
   isAddLotModalOpen: boolean;
   setIsAddLotModalOpen: (open: boolean) => void;
@@ -76,10 +77,26 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [notifications, setNotifications] = useState<NotificationItem[]>(mockNotifications);
   
   // Dynamic Page State
-  const [farmerLots, setFarmerLots] = useState<FarmerLot[]>(mockFarmerLots);
+  const [farmerLots, setFarmerLots] = useState<FarmerLot[]>([]);
   const [storageFacilities] = useState<StorageFacility[]>(mockStorageFacilities);
   const [isAddLotModalOpen, setIsAddLotModalOpen] = useState<boolean>(false);
   const [selectedStorageFacility, setSelectedStorageFacility] = useState<StorageFacility | null>(null);
+
+  useEffect(() => {
+    fetch('http://localhost:5000/api/lots')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) {
+          setFarmerLots(data);
+        } else {
+          setFarmerLots(mockFarmerLots);
+        }
+      })
+      .catch(err => {
+        console.error('Error fetching lots:', err);
+        setFarmerLots(mockFarmerLots);
+      });
+  }, []);
 
   // User Auth State
   const [user, setUser] = useState<FarmerUser>(defaultUser);
@@ -98,6 +115,36 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       id: `lot-${Date.now()}`,
     };
     setFarmerLots(prev => [newLot, ...prev]);
+
+    fetch('http://localhost:5000/api/lots', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(newLot),
+    })
+    .then(res => res.json())
+    .then(savedLot => {
+      console.log('Saved lot to backend:', savedLot);
+    })
+    .catch(err => {
+      console.error('Error saving lot to backend:', err);
+    });
+  };
+
+  const deleteFarmerLot = (id: string) => {
+    setFarmerLots(prev => prev.filter(l => l.id !== id));
+
+    fetch(`http://localhost:5000/api/lots/${id}`, {
+      method: 'DELETE',
+    })
+    .then(res => res.json())
+    .then(data => {
+      console.log('Deleted lot from backend:', data);
+    })
+    .catch(err => {
+      console.error('Error deleting lot from backend:', err);
+    });
   };
 
   const openProfileModal = () => {
@@ -159,6 +206,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         markNotifRead,
         farmerLots,
         addFarmerLot,
+        deleteFarmerLot,
         storageFacilities,
         isAddLotModalOpen,
         setIsAddLotModalOpen,
