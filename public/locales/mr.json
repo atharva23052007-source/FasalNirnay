@@ -1,0 +1,80 @@
+{
+  "nav": {
+    "brandName": "फसलनिर्णय",
+    "brandTagline": "एआय पीक निर्णय इंजिन",
+    "dashboard": "डॅशबोर्ड",
+    "myLots": "माझे लॉट्स",
+    "marketPrices": "बाजार भाव",
+    "storageLocator": "कोल्ड स्टोरेज शोध",
+    "orders": "ऑर्डर्स",
+    "reports": "अहवाल",
+    "hiFarmer": "नमस्कार, शेतकरी"
+  },
+  "auth": {
+    "createAccount": "नवीन खाते तयार करा",
+    "welcomeBack": "पुन्हा स्वागत आहे",
+    "loginSubtitle": "आपल्या फसलनिर्णय डॅशबोर्डवर जाण्यासाठी लॉगिन करा",
+    "signupSubtitle": "एआय पीक शिफारसी मिळवण्यासाठी नोंदणी करा",
+    "selectAccessRole": "तुमची भूमिका निवडा:",
+    "farmerRole": "शेतकरी",
+    "farmerRoleSubtitle": "शेतकरी / उत्पादक",
+    "ngoFpoRole": "एनजीओ/एफपीओ",
+    "ngoFpoRoleSubtitle": "एनजीओ / एफपीओ संस्था",
+    "adminRole": "प्रशासक",
+    "adminRoleSubtitle": "सिस्टम प्रशासक",
+    "fullNameLabel": "पूर्ण नाव / शेतकऱ्याचे नाव:",
+    "phoneEmailLabel": "फोन नंबर किंवा ईमेल पत्ता:",
+    "landHoldingLabel": "जमीन (एकर):",
+    "farmLocationLabel": "शेत / गावाचे ठिकाण (LocationIQ GPS):",
+    "passwordLabel": "पासवर्ड:",
+    "confirmPasswordLabel": "पासवर्डची खात्री करा:",
+    "logInBtn": "लॉगिन करा:",
+    "registerBtn": "नोंदणी करा आणि डॅशबोर्ड उघडा",
+    "prefLangLabel": "पसंतीची भाषा निवडा:",
+    "detectGps": "जीपीएस स्थान शोधा",
+    "autoFillDemo": "डेमो माहिती भरा",
+    "byProceeding": "पुढे जाण्याने आपण फसलनिर्णय एआयच्या सेवा अटी व गोपनीयता धोरणास सहमती देता.",
+    "logInTab": "लॉग इन",
+    "signUpTab": "साइन अप"
+  },
+  "hero": {
+    "goodMorning": "शुभ सकाळ, शेतकरी मित्र! ☀️",
+    "subtitle1": "तुमच्या पिकाला मिळवा उत्तम भाव",
+    "subtitle2": "— एकाच ठिकाणी.",
+    "desc": "स्मार्ट विक्रीसाठी एआय-आधारित शिफारसी.",
+    "partlyCloudy": "अंशतः ढगाळ",
+    "locationNashik": "नाशिक, महाराष्ट्र"
+  },
+  "market": {
+    "title": "आजचा बाजार अहवाल",
+    "sourceAgmarknet": "स्रोत: ॲगमार्कनेट",
+    "modalPrice": "सरासरी दर",
+    "vsYesterday": "कालच्या तुलनेत",
+    "arrivalQty": "आजची आवक (MT)",
+    "tomato": "टोमॅटो",
+    "onion": "कांदा",
+    "leafyVegetables": "पालक व पालेभाज्या"
+  },
+  "actions": {
+    "title": "आजच्या सर्वोत्तम कृती",
+    "subtitle": "जास्तीत जास्त नफ्यासाठी एआयची सर्वोत्तम शिफारस.",
+    "whyTheseActions": "या शिफारसी का?",
+    "harvested": "काढणी दिनांक",
+    "aiSays": "एआय सल्ला",
+    "sellBy": "विक्रीची मुदत",
+    "sellToday": "आजच विका",
+    "processToday": "आजच प्रक्रिया करा",
+    "waitDays": "२ दिवस थांबा",
+    "morning": "सकाळी",
+    "evening": "संध्याकाळी",
+    "afternoon": "दुपारी",
+    "why": "का?",
+    "seeDetails": "तपशील पहा"
+  },
+  "common": {
+    "loading": "लोड होत आहे...",
+    "error": "त्रुटी झाली",
+    "close": "बंद करा",
+    "confirm": "स्वीकारा"
+  }
+}

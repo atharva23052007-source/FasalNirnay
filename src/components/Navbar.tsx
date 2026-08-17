@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useApp } from '../context/AppContext';
 import { mockLocations } from '../data/mockData';
@@ -20,9 +20,6 @@ export const Navbar: React.FC = () => {
     openProfileModal,
   } = useApp();
 
-  const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
-  const [isLocMenuOpen, setIsLocMenuOpen] = useState(false);
-
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const navItems = [
@@ -34,15 +31,9 @@ export const Navbar: React.FC = () => {
     { id: 'Reports', key: 'navReports' },
   ];
 
-  const languages: { id: Language; label: string }[] = [
-    { id: 'en', label: 'English' },
-    { id: 'hi', label: 'हिंदी (Hindi)' },
-    { id: 'mr', label: 'मराठी (Marathi)' },
-  ];
-
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
+    <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm overflow-hidden">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 h-16 flex items-center justify-between gap-2">
         
         {/* Brand Logo & Title */}
         <div className="flex items-center gap-2.5 cursor-pointer" onClick={() => setActiveTab('Dashboard')}>
@@ -64,7 +55,7 @@ export const Navbar: React.FC = () => {
         </div>
 
         {/* Navigation Items */}
-        <nav className="hidden lg:flex items-center gap-6 h-full">
+        <nav className="hidden lg:flex items-center gap-4 xl:gap-6 h-full">
           {navItems.map(item => {
             const isActive = activeTab === item.id;
             return (
@@ -85,42 +76,30 @@ export const Navbar: React.FC = () => {
         </nav>
 
         {/* Right Controls */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-2.5 flex-shrink-0">
 
           {/* Location Selector */}
-          <div className="relative">
-            <button
-              onClick={() => setIsLocMenuOpen(!isLocMenuOpen)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-all"
+          <div className="relative flex items-center h-9">
+            <MapPin className="w-3.5 h-3.5 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <select
+              value={selectedLocation.id}
+              onChange={(e) => {
+                const loc = mockLocations.find(l => l.id === e.target.value);
+                if (loc) setSelectedLocation(loc);
+              }}
+              className="h-full appearance-none pl-8 pr-8 rounded-full border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#167A42]/20 transition-all shadow-sm leading-none max-w-[120px] xl:max-w-none truncate"
             >
-              <MapPin className="w-3.5 h-3.5 text-gray-500" />
-              <span>{selectedLocation.name}, {selectedLocation.state}</span>
-              <ChevronDown className="w-3 h-3 text-gray-400" />
-            </button>
-
-            {isLocMenuOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-lg py-1 z-50">
-                {mockLocations.map(loc => (
-                  <button
-                    key={loc.id}
-                    onClick={() => {
-                      setSelectedLocation(loc);
-                      setIsLocMenuOpen(false);
-                    }}
-                    className={`w-full text-left px-4 py-2 text-xs font-medium hover:bg-gray-50 flex items-center justify-between ${
-                      selectedLocation.id === loc.id ? 'text-[#167A42] font-bold bg-green-50' : 'text-gray-700'
-                    }`}
-                  >
-                    <span>{loc.name}, {loc.state}</span>
-                    {selectedLocation.id === loc.id && <span>✓</span>}
-                  </button>
-                ))}
-              </div>
-            )}
+              {mockLocations.map(loc => (
+                <option key={loc.id} value={loc.id}>
+                  {loc.name}, {loc.state}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="w-3 h-3 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
           {/* Weather Pill */}
-          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 border border-gray-100 text-xs">
+          <div className="hidden xl:flex items-center gap-1.5 px-3.5 h-9 rounded-full bg-gray-50 border border-gray-100 text-xs font-medium flex-shrink-0">
             <span>☀️</span>
             <span className="font-bold text-gray-900">26°C</span>
             <span className="text-gray-300">|</span>
@@ -128,42 +107,25 @@ export const Navbar: React.FC = () => {
           </div>
 
           {/* Language Switcher */}
-          <div className="relative">
-            <button
-              onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-all"
+          <div className="relative flex items-center h-9">
+            <Globe className="w-3.5 h-3.5 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value as Language)}
+              className="h-full appearance-none pl-8 pr-8 rounded-full border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#167A42]/20 transition-all shadow-sm leading-none max-w-[100px] xl:max-w-none truncate"
             >
-              <Globe className="w-3.5 h-3.5 text-gray-500" />
-              <span>{languages.find(l => l.id === language)?.label.split(' ')[0]}</span>
-              <ChevronDown className="w-3 h-3 text-gray-400" />
-            </button>
-
-            {isLangMenuOpen && (
-              <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-xl shadow-lg py-1 z-50">
-                {languages.map(lang => (
-                  <button
-                    key={lang.id}
-                    onClick={() => {
-                      setLanguage(lang.id);
-                      setIsLangMenuOpen(false);
-                    }}
-                    className={`w-full text-left px-4 py-2 text-xs font-medium hover:bg-gray-50 flex items-center justify-between ${
-                      language === lang.id ? 'text-[#167A42] font-bold bg-green-50' : 'text-gray-700'
-                    }`}
-                  >
-                    <span>{lang.label}</span>
-                    {language === lang.id && <span>✓</span>}
-                  </button>
-                ))}
-              </div>
-            )}
+              <option value="en">English</option>
+              <option value="hi">हिंदी (Hindi)</option>
+              <option value="mr">मराठी (Marathi)</option>
+            </select>
+            <ChevronDown className="w-3 h-3 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
           {/* Notifications Icon & Dropdown */}
           <div className="relative">
             <button
               onClick={() => setIsNotifOpen(!isNotifOpen)}
-              className="relative w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-all text-gray-700"
+              className="relative w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-all text-gray-700 shadow-sm"
               title="Notifications"
             >
               <Bell className="w-4 h-4" />
@@ -177,26 +139,33 @@ export const Navbar: React.FC = () => {
             {isNotifOpen && <NotificationsDropdown />}
           </div>
 
-          {/* User Profile Button */}
-          <div
-            onClick={openProfileModal}
-            className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-1 px-2.5 rounded-full transition-all border border-gray-200 sm:border-transparent hover:border-gray-200"
-            title="Account & Profile"
-          >
-            <div className="w-7 h-7 rounded-full overflow-hidden border border-gray-200 bg-gray-100 flex-shrink-0">
-              <img
-                src={user.isLoggedIn ? user.avatarUrl : 'https://images.unsplash.com/photo-1595273670150-bd0c3c392e46?w=100&auto=format&fit=crop&q=80'}
-                alt="Farmer Avatar"
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1595273670150-bd0c3c392e46?w=100&auto=format&fit=crop&q=80';
-                }}
-              />
+          {/* User Profile & Role Badge */}
+          <div className="flex items-center gap-2 flex-shrink-0">
+            <div
+              onClick={openProfileModal}
+              className="flex items-center gap-2 cursor-pointer hover:bg-emerald-50 p-1 px-2.5 rounded-full transition-all border border-emerald-100 hover:border-emerald-300 shadow-sm flex-shrink-0"
+              title="Account & Profile Details"
+            >
+              <div className="w-7 h-7 rounded-full overflow-hidden border border-emerald-300 bg-gray-100 flex-shrink-0">
+                <img
+                  src={user.isLoggedIn ? user.avatarUrl : 'https://images.unsplash.com/photo-1595273670150-bd0c3c392e46?w=100&auto=format&fit=crop&q=80'}
+                  alt="Avatar"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1595273670150-bd0c3c392e46?w=100&auto=format&fit=crop&q=80';
+                  }}
+                />
+              </div>
+              <div className="hidden md:flex flex-col text-left leading-none">
+                <span className="text-xs font-bold text-gray-900">
+                  {user.isLoggedIn ? user.name : t('hiFarmer', 'Hi, Farmer')}
+                </span>
+                <span className="text-[10px] font-extrabold text-[#167A42] bg-emerald-100 px-1.5 py-0.5 rounded-full mt-0.5 w-fit">
+                  {user.role || 'Farmer'}
+                </span>
+              </div>
+              <ChevronDown className="w-3 h-3 text-gray-400" />
             </div>
-            <span className="hidden md:inline text-xs font-bold text-gray-900">
-              {user.isLoggedIn ? `Hi, ${user.name.split(' ')[0]}` : t('hiFarmer', 'Hi, Farmer')}
-            </span>
-            <ChevronDown className="w-3 h-3 text-gray-400" />
           </div>
 
         </div>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useApp } from '../context/AppContext';
-import { MarketOverview } from './MarketOverview';
+import { AskAIAssistant } from './AskAIAssistant';
 import { CloudSun } from 'lucide-react';
 
 export const HeroSection: React.FC = () => {
@@ -60,8 +60,8 @@ export const HeroSection: React.FC = () => {
 
       </div>
 
-      {/* Right Market Overview */}
-      <MarketOverview />
+      {/* Right AI Assistant */}
+      <AskAIAssistant />
 
     </section>
   );
