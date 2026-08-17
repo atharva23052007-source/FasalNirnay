@@ -1,7 +1,39 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { mockMarketPricesDetails } from '../data/mockData';
 import { Search, TrendingUp, TrendingDown } from 'lucide-react';
 import { AutoTranslate, useLanguage } from '../context/LanguageContext';
+import { useApp } from '../context/AppContext';
+
+const STATES_OF_INDIA = [
+  'Andhra Pradesh',
+  'Arunachal Pradesh',
+  'Assam',
+  'Bihar',
+  'Chhattisgarh',
+  'Goa',
+  'Gujarat',
+  'Haryana',
+  'Himachal Pradesh',
+  'Jharkhand',
+  'Karnataka',
+  'Kerala',
+  'Madhya Pradesh',
+  'Maharashtra',
+  'Manipur',
+  'Meghalaya',
+  'Mizoram',
+  'Nagaland',
+  'Odisha',
+  'Punjab',
+  'Rajasthan',
+  'Sikkim',
+  'Tamil Nadu',
+  'Telangana',
+  'Tripura',
+  'Uttar Pradesh',
+  'Uttarakhand',
+  'West Bengal'
+];
 
 export const MarketPricesPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
@@ -9,6 +41,7 @@ export const MarketPricesPage: React.FC = () => {
   const [prices, setPrices] = useState<any[]>(mockMarketPricesDetails);
   const [isLoading, setIsLoading] = useState(true);
   const { t } = useLanguage();
+  const { farmerLots } = useApp();
 
   useEffect(() => {
     fetch('http://localhost:5000/api/market-prices')
@@ -28,7 +61,41 @@ export const MarketPricesPage: React.FC = () => {
       });
   }, []);
 
-  const filteredPrices = prices.filter((p) => {
+  const combinedPrices = useMemo(() => {
+    const list = [...prices];
+
+    farmerLots.forEach((lot) => {
+      // Clean name (e.g. Tomato (Hybrid) -> Tomato)
+      const cropName = lot.cropName.replace(/\s*[(&].*$/, '').trim();
+
+      const exists = list.some(
+        (p) => p.crop.toLowerCase() === cropName.toLowerCase()
+      );
+
+      if (!exists) {
+        const modal = lot.quantityKg > 0 ? (lot.estValueRs / lot.quantityKg) : 25;
+        const min = modal * 0.85;
+        const max = modal * 1.15;
+
+        list.push({
+          id: `lot-crop-${lot.id}`,
+          crop: cropName,
+          mandi: lot.location ? `${lot.location.split(',')[0]} APMC` : 'Nashik APMC',
+          state: lot.location ? (lot.location.split(',')[1]?.trim() || 'Maharashtra') : 'Maharashtra',
+          minPrice: min,
+          maxPrice: max,
+          modalPrice: modal,
+          priceChangePercent: 0.0,
+          arrivalQtyMT: Math.floor(lot.quantityKg / 1000) || 5,
+          lastUpdated: 'Just Now',
+        });
+      }
+    });
+
+    return list;
+  }, [prices, farmerLots]);
+
+  const filteredPrices = combinedPrices.filter((p) => {
     const matchesSearch =
       p.crop.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.mandi.toLowerCase().includes(searchTerm.toLowerCase());
@@ -64,11 +131,14 @@ export const MarketPricesPage: React.FC = () => {
           <select
             value={selectedState}
             onChange={(e) => setSelectedState(e.target.value)}
-            className="px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 bg-white"
+            className="px-3 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-700 bg-white cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#167A42]/20"
           >
             <option value="All"><AutoTranslate text="All States" /></option>
-            <option value="Maharashtra">Maharashtra</option>
-            <option value="Madhya Pradesh">Madhya Pradesh</option>
+            {STATES_OF_INDIA.map((state) => (
+              <option key={state} value={state}>
+                {state}
+              </option>
+            ))}
           </select>
         </div>
       </div>
