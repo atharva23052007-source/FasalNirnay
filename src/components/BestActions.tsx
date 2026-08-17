@@ -1,13 +1,13 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useApp } from '../context/AppContext';
 import { mockCropRecommendations } from '../data/mockData';
 import { ActionCard } from './ActionCard';
-import { Info } from 'lucide-react';
+import { Info, Plus } from 'lucide-react';
 
 export const BestActions: React.FC = () => {
   const { t } = useLanguage();
-  const { setIsWhyModalOpen } = useApp();
+  const { setIsWhyModalOpen, setIsAddLotModalOpen, cropRecommendations, removeCropRecommendation } = useApp();
 
   return (
     <section className="bg-white border border-gray-200 rounded-2xl p-5 sm:p-6 shadow-sm">
@@ -34,22 +34,51 @@ export const BestActions: React.FC = () => {
           </div>
         </div>
 
-        <button
-          onClick={() => setIsWhyModalOpen(true)}
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-blue-500 text-blue-600 text-xs font-bold hover:bg-blue-50 transition-all self-start sm:self-auto"
-        >
-          <Info className="w-3.5 h-3.5" />
-          <span>{t('whyTheseActions', 'Why these actions?')}</span>
-        </button>
+        <div className="flex items-center gap-2 self-start sm:self-auto">
+          <button
+            onClick={() => setIsAddLotModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-gray-300 text-gray-700 text-xs font-bold hover:bg-gray-50 transition-all"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>{t('addLot', 'Add Lot')}</span>
+          </button>
+          <button
+            onClick={() => setIsWhyModalOpen(true)}
+            className="inline-flex items-center gap-1.5 px-4 py-2 rounded-full border border-blue-500 text-blue-600 text-xs font-bold hover:bg-blue-50 transition-all"
+          >
+            <Info className="w-3.5 h-3.5" />
+            <span>{t('whyTheseActions', 'Why these actions?')}</span>
+          </button>
+        </div>
 
       </div>
 
-      {/* Cards List */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {mockCropRecommendations.map(crop => (
-          <ActionCard key={crop.id} crop={crop} />
-        ))}
-      </div>
+      {/* Cards List or Empty State */}
+      {cropRecommendations.length === 0 ? (
+        <div className="flex flex-col items-center justify-center p-8 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50 text-center">
+          <div className="w-16 h-16 mb-4 bg-green-100 rounded-full flex items-center justify-center">
+            <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+            </svg>
+          </div>
+          <h3 className="text-gray-900 font-bold text-lg mb-2">No Harvest Lots Found</h3>
+          <p className="text-gray-500 text-sm max-w-md mx-auto mb-5">
+            You haven't added any harvest lots yet. Add your crop details to receive personalized AI recommendations on when and where to sell.
+          </p>
+          <button
+            onClick={() => setIsAddLotModalOpen(true)}
+            className="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg text-sm transition-colors shadow-sm"
+          >
+            Add Your First Lot
+          </button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          {cropRecommendations.map(crop => (
+            <ActionCard key={crop.id} crop={crop} onRemove={removeCropRecommendation} />
+          ))}
+        </div>
+      )}
 
     </section>
   );

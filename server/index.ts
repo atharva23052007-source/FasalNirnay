@@ -1,4 +1,5 @@
 import express, { Request, Response, NextFunction } from 'express';
+import https from 'https';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
@@ -20,6 +21,7 @@ app.use(cors());
 app.use(express.json());
 app.use(languageMiddleware);
 
+// API Routes
 // In-memory fallbacks when MongoDB is offline
 let localLots = [...mockFarmerLots];
 let localOrders = [...mockInputPurchaseHistory];
@@ -27,8 +29,7 @@ let localOrders = [...mockInputPurchaseHistory];
 // --- MONGODB SETUP ---
 let isMongoConnected = false;
 
-// Connect to MongoDB
-let MONGO_URI = process.env.MONGODB_URI || process.env.MONGO_URI || process.env.MONGO_URL || 'mongodb://127.0.0.1:27017/fasalnirnay';
+let MONGO_URI = process.env.MONGO_URL_LOTS || process.env.MONGODB_URI || process.env.MONGO_URI || process.env.MONGO_URL || 'mongodb://127.0.0.1:27017/fasalnirnay';
 if (MONGO_URI.endsWith(';')) {
   MONGO_URI = MONGO_URI.slice(0, -1);
 }
@@ -368,6 +369,74 @@ app.get('/api/market-prices', async (req: Request, res: Response): Promise<void>
   res.json(translatedPayload);
 });
 
+app.post('/api/send-sms', async (req: Request, res: Response) => {
+  try {
+    const { phone, message } = req.body;
+    const apiKey = process.env.FAST2SMS_API_KEY;
+
+    if (!apiKey) {
+      res.status(400).json({ error: 'To send a real SMS to your phone, please create a free account on fast2sms.com and add FAST2SMS_API_KEY to your .env file!' });
+      return;
+    }
+
+    const response = await fetch('https://www.fast2sms.com/dev/bulkV2', {
+      method: 'POST',
+      headers: {
+        'authorization': apiKey,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        route: 'v3',
+        sender_id: 'TXTIND',
+        message: message,
+        language: 'english',
+        flash: 0,
+        numbers: phone.replace(/[^0-9]/g, '').slice(-10)
+      })
+    });
+
+    const data = await response.json() as any;
+    if (data.return) {
+      res.json({ success: true, message: 'SMS Sent Successfully to your phone!' });
+    } else {
+      res.status(400).json({ error: data.message || 'Failed to send SMS' });
+    }
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/images', async (req: Request, res: Response) => {
+  const query = req.query.q as string;
+  const apiKey = process.env.PIXABAY_API_KEY;
+
+  if (!apiKey) {
+    res.status(500).json({ error: 'Pixabay API key not configured on server' });
+    return;
+  }
+
+  if (!query) {
+    res.status(400).json({ error: 'Query parameter "q" is required' });
+    return;
+  }
+
+  try {
+    const fetchResponse = await fetch(
+      `https://pixabay.com/api/?key=${apiKey}&q=${encodeURIComponent(query)}&image_type=photo&orientation=horizontal&per_page=3`
+    );
+    const data = await fetchResponse.json() as any;
+
+    if (data.hits && data.hits.length > 0) {
+      res.json({ url: data.hits[0].webformatURL });
+    } else {
+      res.status(404).json({ error: 'No images found' });
+    }
+  } catch (error) {
+    console.error('Pixabay API Error:', error);
+    res.status(500).json({ error: 'Failed to fetch image from Pixabay' });
+  }
+});
+
 app.get('/api/recommendations', async (req: Request, res: Response): Promise<void> => {
   const payload = {
     recommendations: [
@@ -402,233 +471,162 @@ app.get('/api/recommendations', async (req: Request, res: Response): Promise<voi
   res.json(translatedPayload);
 });
 
-app.post('/api/orders', async (req: Request, res: Response): Promise<void> => {
-  const { channel, crop, location } = req.body;
-  if (!channel || !crop) {
-    res.status(400).json({ error: 'Channel and crop fields are required' });
-    return;
-  }
-
-  const payload = {
-    success: true,
-    orderId: `FN-${Math.floor(100000 + Math.random() * 900000)}`,
-    channel,
-    crop,
-    location: location || 'Nashik, Maharashtra',
-    status: 'DISPATCH_SCHEDULED',
-    statusText: 'Pickup dispatched within 2 hours',
-    estimatedPickup: 'Within 2 hours',
-  };
-
-  const translatedPayload = await translateResponse(payload, req.language);
-  res.status(201).json(translatedPayload);
-});
-
-// Explicit Text Translation Endpoint
-app.post('/api/translate', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { text, targetLanguage } = req.body;
-    const tgt = targetLanguage || req.language || 'en';
-
-    if (!text || typeof text !== 'string') {
-      res.status(400).json({ error: 'Valid text string is required' });
-      return;
-    }
-
-    const translatedText = await translateText(text, tgt);
-    res.json({ text, targetLanguage: tgt, translatedText });
-  } catch (error: any) {
-    res.status(500).json({ error: 'Translation failed', message: error.message });
-  }
-});
-
-// --- NEW ENDPOINTS FOR FARMER LOTS ---
-
-app.get('/api/lots', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    if (mongoose.connection.readyState !== 1) {
-      res.json(localLots);
-      return;
-    }
-    const lots = await Lot.find().sort({ createdAt: -1 });
-    res.json(lots);
-  } catch (err) {
-    next(err);
-  }
-});
-
-app.post('/api/lots', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const lotData = req.body;
-    if (mongoose.connection.readyState !== 1) {
-      if (!lotData.id) {
-        lotData.id = `lot-${Date.now()}`;
-      }
-      localLots.unshift(lotData);
-      res.status(201).json(lotData);
-      return;
-    }
-    const newLot = new Lot(lotData);
-    await newLot.save();
-    res.status(201).json(newLot);
-  } catch (err) {
-    next(err);
-  }
-});
-
-app.delete('/api/lots/:id', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { id } = req.params;
-    if (mongoose.connection.readyState !== 1) {
-      const initialLength = localLots.length;
-      localLots = localLots.filter(l => l.id !== id);
-      if (localLots.length === initialLength) {
-        res.status(404).json({ error: 'Lot not found' });
+    app.post('/api/orders', async (req: Request, res: Response): Promise<void> => {
+      const { channel, crop, location } = req.body;
+      if (!channel || !crop) {
+        res.status(400).json({ error: 'Channel and crop fields are required' });
         return;
       }
-      res.json({ success: true, message: 'Lot deleted successfully' });
-      return;
-    }
-    const result = await Lot.findOneAndDelete({ id });
-    if (!result) {
-      res.status(404).json({ error: 'Lot not found' });
-      return;
-    }
-    res.json({ success: true, message: 'Lot deleted successfully' });
-  } catch (err) {
-    next(err);
-  }
-});
 
-// --- NEW ENDPOINTS FOR PESTICIDES/INPUTS ---
+      const payload = {
+        success: true,
+        orderId: `FN-${Math.floor(100000 + Math.random() * 900000)}`,
+        channel,
+        crop,
+        location: location || 'Nashik, Maharashtra',
+        status: 'DISPATCH_SCHEDULED',
+        statusText: 'Pickup dispatched within 2 hours',
+        estimatedPickup: 'Within 2 hours',
+      };
 
-app.get('/api/pesticides', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    if (mongoose.connection.readyState !== 1) {
-      res.json(mockPesticides);
-      return;
-    }
-    const products = await Pesticide.find();
-    res.json(products);
-  } catch (err) {
-    next(err);
-  }
-});
+      const translatedPayload = await translateResponse(payload, req.language);
+      res.status(201).json(translatedPayload);
+    });
 
-app.get('/api/orders/history', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    if (mongoose.connection.readyState !== 1) {
-      res.json(localOrders);
-      return;
-    }
-    const orders = await InputOrder.find().sort({ createdAt: -1 });
-    res.json(orders);
-  } catch (err) {
-    next(err);
-  }
-});
-
-app.post('/api/orders/history', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const orderData = req.body;
-    if (mongoose.connection.readyState !== 1) {
-      if (!orderData.id) {
-        orderData.id = `order-${Date.now()}`;
-      }
-      localOrders.unshift(orderData);
-      res.status(201).json(orderData);
-      return;
-    }
-    const newOrder = new InputOrder(orderData);
-    await newOrder.save();
-    res.status(201).json(newOrder);
-  } catch (err) {
-    next(err);
-  }
-});
-
-app.get('/api/market-prices', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const apiKey = process.env.DATA_GOV_API_KEY;
-    if (apiKey) {
+    // Explicit Text Translation Endpoint
+    app.post('/api/translate', async (req: Request, res: Response): Promise<void> => {
       try {
-        const response = await fetch(
-          `https://api.data.gov.in/resource/9ef842f8-8580-4c10-a269-6830519d4e9e?api-key=${apiKey}&format=json&limit=50`
-        );
-        if (response.ok) {
-          const data = await response.json();
-          if (data && Array.isArray(data.records) && data.records.length > 0) {
-            const parsed = data.records.map((r: any, idx: number) => {
-              const min = parseFloat(r.min_price) / 100 || 20;
-              const max = parseFloat(r.max_price) / 100 || 35;
-              const modal = parseFloat(r.modal_price) / 100 || 28;
-              return {
-                id: `live-${idx}-${Date.now()}`,
-                crop: r.commodity || 'Crop',
-                mandi: r.market || 'APMC',
-                state: r.state || 'State',
-                minPrice: min,
-                maxPrice: max,
-                modalPrice: modal,
-                priceChangePercent: parseFloat(((Math.random() * 6) - 3).toFixed(1)),
-                arrivalQtyMT: Math.floor(20 + Math.random() * 150),
-                lastUpdated: r.arrival_date || 'Today',
-              };
-            });
-            const translated = await translateResponse(parsed, req.language);
-            res.json(translated);
+        const { text, targetLanguage } = req.body;
+        const tgt = targetLanguage || req.language || 'en';
+
+        if (!text || typeof text !== 'string') {
+          res.status(400).json({ error: 'Valid text string is required' });
+          return;
+        }
+
+        const translatedText = await translateText(text, tgt);
+        res.json({ text, targetLanguage: tgt, translatedText });
+      } catch (error: any) {
+        res.status(500).json({ error: 'Translation failed', message: error.message });
+      }
+    });
+
+    // --- NEW ENDPOINTS FOR FARMER LOTS ---
+
+    app.get('/api/lots', async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        if (mongoose.connection.readyState !== 1) {
+          res.json(localLots);
+          return;
+        }
+        const lots = await Lot.find().sort({ createdAt: -1 });
+        res.json(lots);
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    app.post('/api/lots', async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const lotData = req.body;
+        if (mongoose.connection.readyState !== 1) {
+          if (!lotData.id) {
+            lotData.id = `lot-${Date.now()}`;
+          }
+          localLots.unshift(lotData);
+          res.status(201).json(lotData);
+          return;
+        }
+        const newLot = new Lot(lotData);
+        await newLot.save();
+        res.status(201).json(newLot);
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    app.delete('/api/lots/:id', async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const { id } = req.params;
+        if (mongoose.connection.readyState !== 1) {
+          const initialLength = localLots.length;
+          localLots = localLots.filter(l => l.id !== id);
+          if (localLots.length === initialLength) {
+            res.status(404).json({ error: 'Lot not found' });
             return;
           }
+          res.json({ success: true, message: 'Lot deleted successfully' });
+          return;
         }
-      } catch (err: any) {
-        console.warn(`[Data.gov API Warning] Live fetch failed: ${err.message}`);
+        const result = await Lot.findOneAndDelete({ id });
+        if (!result) {
+          res.status(404).json({ error: 'Lot not found' });
+          return;
+        }
+        res.json({ success: true, message: 'Lot deleted successfully' });
+      } catch (err) {
+        next(err);
       }
-    }
+    });
 
-    if (mongoose.connection.readyState === 1) {
-      const dbPrices = await MarketPrice.find();
-      if (dbPrices.length > 0) {
-        const translated = await translateResponse(dbPrices, req.language);
-        res.json(translated);
-        return;
+    // --- NEW ENDPOINTS FOR PESTICIDES/INPUTS ---
+
+    app.get('/api/pesticides', async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        if (mongoose.connection.readyState !== 1) {
+          res.json(mockPesticides);
+          return;
+        }
+        const products = await Pesticide.find();
+        res.json(products);
+      } catch (err) {
+        next(err);
       }
-    }
+    });
 
-    const translated = await translateResponse(mockMarketPricesDetails, req.language);
-    res.json(translated);
-  } catch (err) {
-    next(err);
+    app.get('/api/orders/history', async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        if (mongoose.connection.readyState !== 1) {
+          res.json(localOrders);
+          return;
+        }
+        const orders = await InputOrder.find().sort({ createdAt: -1 });
+        res.json(orders);
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    app.post('/api/orders/history', async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const orderData = req.body;
+        if (mongoose.connection.readyState !== 1) {
+          if (!orderData.id) {
+            orderData.id = `order-${Date.now()}`;
+          }
+          localOrders.unshift(orderData);
+          res.status(201).json(orderData);
+          return;
+        }
+        const newOrder = new InputOrder(orderData);
+        await newOrder.save();
+        res.status(201).json(newOrder);
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    // Global Error Handler Middleware
+    app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+      console.error('Server Error:', err.message);
+      res.status(500).json({ error: 'Internal Server Error', message: err.message });
+    });
+
+    if(process.env.NODE_ENV !== 'test') {
+    app.listen(PORT, () => {
+      console.log(`🚀 FasalNirnay Express API Server running on port ${PORT}`);
+    });
   }
-});
 
-app.get('/api/reports/summary', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    if (mongoose.connection.readyState === 1) {
-      const report = await ReportSummary.findOne();
-      if (report) {
-        const translated = await translateResponse(report.toObject(), req.language);
-        res.json(translated);
-        return;
-      }
-    }
-    const translated = await translateResponse(mockReportSummary, req.language);
-    res.json(translated);
-  } catch (err) {
-    next(err);
-  }
-});
-
-// Global Error Handler Middleware
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error('Server Error:', err.message);
-  res.status(500).json({ error: 'Internal Server Error', message: err.message });
-});
-
-if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
-    console.log(`🚀 FasalNirnay Express API Server running on port ${PORT}`);
-  });
-}
-
-export default app;
+  export default app;
 
