@@ -29,6 +29,16 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     } catch (e) {}
   }, [language]);
 
+  const changeLanguage = (lang: Language) => {
+    try {
+      localStorage.setItem('fasal_nirnay_lang', lang);
+      setLanguage(lang);
+      window.location.reload();
+    } catch (e) {
+      setLanguage(lang);
+    }
+  };
+
   const t = (key: string, fallback?: string): string => {
     const val = translations[language]?.[key];
     if (val) return val;
@@ -47,7 +57,7 @@ export const LanguageProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   return (
-    <LanguageContext.Provider value={{ language, setLanguage, t, translateAsync }}>
+    <LanguageContext.Provider value={{ language, setLanguage: changeLanguage, t, translateAsync }}>
       {children}
     </LanguageContext.Provider>
   );

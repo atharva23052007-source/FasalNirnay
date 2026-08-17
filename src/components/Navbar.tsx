@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useApp } from '../context/AppContext';
 import { mockLocations } from '../data/mockData';
@@ -22,6 +22,25 @@ export const Navbar: React.FC = () => {
 
   const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
   const [isLocMenuOpen, setIsLocMenuOpen] = useState(false);
+
+  const langRef = useRef<HTMLDivElement>(null);
+  const locRef = useRef<HTMLDivElement>(null);
+
+  // Auto-close dropdowns when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (langRef.current && !langRef.current.contains(event.target as Node)) {
+        setIsLangMenuOpen(false);
+      }
+      if (locRef.current && !locRef.current.contains(event.target as Node)) {
+        setIsLocMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const unreadCount = notifications.filter(n => !n.read).length;
 
@@ -88,10 +107,10 @@ export const Navbar: React.FC = () => {
         <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
 
           {/* Location Selector */}
-          <div className="relative">
+          <div className="relative" ref={locRef}>
             <button
               onClick={() => setIsLocMenuOpen(!isLocMenuOpen)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-all shadow-sm"
             >
               <MapPin className="w-3.5 h-3.5 text-gray-500" />
               <span className="hidden sm:inline">{selectedLocation.name}, {selectedLocation.state}</span>
@@ -99,22 +118,37 @@ export const Navbar: React.FC = () => {
             </button>
 
             {isLocMenuOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-200 rounded-xl shadow-lg py-1 z-50">
-                {mockLocations.map(loc => (
-                  <button
-                    key={loc.id}
-                    onClick={() => {
-                      setSelectedLocation(loc);
-                      setIsLocMenuOpen(false);
-                    }}
-                    className={`w-full text-left px-4 py-2 text-xs font-medium hover:bg-gray-50 flex items-center justify-between ${
-                      selectedLocation.id === loc.id ? 'text-[#167A42] font-bold bg-green-50' : 'text-gray-700'
-                    }`}
-                  >
-                    <span>{loc.name}, {loc.state}</span>
-                    {selectedLocation.id === loc.id && <span>✓</span>}
-                  </button>
-                ))}
+              <div className="absolute right-0 mt-2 w-52 bg-white border border-gray-100 rounded-2xl shadow-xl py-2 z-50 animate-slideDown border-gray-200/50">
+                <div className="px-4 py-1.5 border-b border-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                  Select Location
+                </div>
+                {mockLocations.map(loc => {
+                  const active = selectedLocation.id === loc.id;
+                  return (
+                    <button
+                      key={loc.id}
+                      onClick={() => {
+                        setSelectedLocation(loc);
+                        setIsLocMenuOpen(false);
+                      }}
+                      className={`w-full text-left px-4 py-2.5 text-xs font-semibold flex items-center justify-between transition-colors ${
+                        active
+                          ? 'text-[#167A42] bg-[#E6F4EA]/40 font-bold'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className={`w-1.5 h-1.5 rounded-full ${active ? 'bg-[#167A42]' : 'bg-transparent'}`} />
+                        <span>{loc.name}, {loc.state}</span>
+                      </div>
+                      {active && (
+                        <svg className="w-3.5 h-3.5 text-[#167A42]" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -128,10 +162,10 @@ export const Navbar: React.FC = () => {
           </div>
 
           {/* Language Switcher */}
-          <div className="relative">
+          <div className="relative" ref={langRef}>
             <button
               onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-all"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-all shadow-sm"
             >
               <Globe className="w-3.5 h-3.5 text-gray-500" />
               <span className="hidden sm:inline">{languages.find(l => l.id === language)?.label.split(' ')[0]}</span>
@@ -139,22 +173,37 @@ export const Navbar: React.FC = () => {
             </button>
 
             {isLangMenuOpen && (
-              <div className="absolute right-0 mt-2 w-40 bg-white border border-gray-200 rounded-xl shadow-lg py-1 z-50">
-                {languages.map(lang => (
-                  <button
-                    key={lang.id}
-                    onClick={() => {
-                      setLanguage(lang.id);
-                      setIsLangMenuOpen(false);
-                    }}
-                    className={`w-full text-left px-4 py-2 text-xs font-medium hover:bg-gray-50 flex items-center justify-between ${
-                      language === lang.id ? 'text-[#167A42] font-bold bg-green-50' : 'text-gray-700'
-                    }`}
-                  >
-                    <span>{lang.label}</span>
-                    {language === lang.id && <span>✓</span>}
-                  </button>
-                ))}
+              <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-xl py-2 z-50 animate-slideDown border-gray-200/50">
+                <div className="px-4 py-1.5 border-b border-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
+                  Select Language
+                </div>
+                {languages.map(lang => {
+                  const active = language === lang.id;
+                  return (
+                    <button
+                      key={lang.id}
+                      onClick={() => {
+                        setLanguage(lang.id);
+                        setIsLangMenuOpen(false);
+                      }}
+                      className={`w-full text-left px-4 py-2.5 text-xs font-semibold flex items-center justify-between transition-colors ${
+                        active
+                          ? 'text-[#167A42] bg-[#E6F4EA]/40 font-bold'
+                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <span className={`w-1.5 h-1.5 rounded-full ${active ? 'bg-[#167A42]' : 'bg-transparent'}`} />
+                        <span>{lang.label}</span>
+                      </div>
+                      {active && (
+                        <svg className="w-3.5 h-3.5 text-[#167A42]" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -163,7 +212,7 @@ export const Navbar: React.FC = () => {
           <div className="relative">
             <button
               onClick={() => setIsNotifOpen(!isNotifOpen)}
-              className="relative w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-all text-gray-700"
+              className="relative w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-all text-gray-700 shadow-sm"
               title="Notifications"
             >
               <Bell className="w-4 h-4" />
@@ -181,7 +230,7 @@ export const Navbar: React.FC = () => {
           <div className="flex items-center gap-2">
             <div
               onClick={openProfileModal}
-              className="flex items-center gap-2 cursor-pointer hover:bg-emerald-50 p-1 px-2.5 rounded-full transition-all border border-emerald-100 hover:border-emerald-300"
+              className="flex items-center gap-2 cursor-pointer hover:bg-emerald-50 p-1 px-2.5 rounded-full transition-all border border-emerald-100 hover:border-emerald-300 shadow-sm"
               title="Account & Profile Details"
             >
               <div className="w-7 h-7 rounded-full overflow-hidden border border-emerald-300 bg-gray-100 flex-shrink-0">
@@ -210,6 +259,5 @@ export const Navbar: React.FC = () => {
 
       </div>
     </header>
-
   );
 };
