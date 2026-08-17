@@ -18,3 +18,14 @@
 .font-heading {
   font-family: 'Outfit', 'Inter', sans-serif;
 }
+
+/* Reset native select element styles globally */
+select {
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: none;
+}
+select::-ms-expand {
+  display: none;
+}

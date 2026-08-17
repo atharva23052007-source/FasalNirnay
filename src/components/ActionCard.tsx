@@ -1,8 +1,5 @@
 import React, { useState, useEffect } from 'react';
 import { CropRecommendation, FarmerLot } from '../types';
-import { useLanguage } from '../context/LanguageContext';
-import React from 'react';
-import { CropRecommendation } from '../types';
 import { useLanguage, AutoTranslate } from '../context/LanguageContext';
 import { useApp } from '../context/AppContext';
 import { Lightbulb, Scale, X, Recycle } from 'lucide-react';
@@ -48,21 +45,19 @@ export const ActionCard: React.FC<ActionCardProps> = ({ crop, onRemove }) => {
   useEffect(() => {
     const loadImage = async () => {
       if ((crop as any).image?.includes('1592924357228')) {
-        const pixabayUrl = await fetchCropImage(resolvedCropName);
-        if (pixabayUrl) {
-          setDynamicImage(pixabayUrl);
-        }
+        const fetchedUrl = await fetchCropImage(resolvedCropName);
+        if (fetchedUrl) setDynamicImage(fetchedUrl);
       }
     };
     loadImage();
-  }, [(crop as any).image, resolvedCropName]);
+  }, [crop, resolvedCropName]);
 
   const getBorderColor = () => {
     switch ((crop as any).actionType) {
-      case 'green': return 'border-t-4 border-t-emerald-600';
-      case 'red': return 'border-t-4 border-t-red-600';
-      case 'orange': return 'border-t-4 border-t-amber-500';
-      default: return 'border-t-4 border-t-gray-400';
+      case 'green': return 'border-emerald-200 hover:border-emerald-300';
+      case 'red': return 'border-red-200 hover:border-red-300';
+      case 'orange': return 'border-amber-200 hover:border-amber-300';
+      default: return 'border-gray-200 hover:border-gray-300';
     }
   };
 
@@ -124,8 +119,7 @@ export const ActionCard: React.FC<ActionCardProps> = ({ crop, onRemove }) => {
 
   return (
     <div
-      className={`bg-white border border-gray-200 rounded-xl p-5 flex flex-col hover:shadow-md transition-all h-full relative ${getBorderColor()}`}
-      className={`bg-white border border-gray-200 rounded-xl p-5 flex flex-col hover:shadow-md transition-all h-full font-sans ${getBorderColor()}`}
+      className={`bg-white border rounded-xl p-5 flex flex-col hover:shadow-md transition-all h-full relative font-sans ${getBorderColor()}`}
     >
       {onRemove && (
         <div className="absolute -top-3 -right-3 z-10 flex flex-col items-end">
@@ -225,12 +219,15 @@ export const ActionCard: React.FC<ActionCardProps> = ({ crop, onRemove }) => {
         </div>
       )}
 
-
       {/* Action Button & Timeline */}
       <div className="pt-4 border-t border-gray-100 flex items-center justify-between mt-auto">
         <div className="flex flex-col">
-           <span className="text-xs text-gray-500 font-medium">{sellTimelineText}</span>
-           <span className="font-heading font-bold text-sm text-gray-900">{(crop as any).sellDateText}</span>
+           <span className="text-xs text-gray-500 font-medium">
+             <AutoTranslate text={sellTimelineText} />
+           </span>
+           <span className="font-heading font-bold text-sm text-gray-900">
+             <AutoTranslate text={(crop as any).sellDateText || 'Immediate'} />
+           </span>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -248,12 +245,6 @@ export const ActionCard: React.FC<ActionCardProps> = ({ crop, onRemove }) => {
           >
             Sell Now
           </button>
-          <span className="text-xs text-gray-500 font-medium">
-            <AutoTranslate text={sellTimelineText} />
-          </span>
-          <span className="font-heading font-bold text-sm text-gray-900">
-            <AutoTranslate text={crop.sellDateText} />
-          </span>
         </div>
       </div>
     </div>

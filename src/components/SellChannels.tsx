@@ -1,6 +1,4 @@
 import React, { useState } from 'react';
-import { useLanguage } from '../context/LanguageContext';
-import React from 'react';
 import { useLanguage, AutoTranslate } from '../context/LanguageContext';
 import { useApp } from '../context/AppContext';
 import { mockBuyerChannels } from '../data/mockData';
@@ -28,9 +26,7 @@ export const SellChannels: React.FC = () => {
               alt="Blinkit Quick Commerce Delivery"
               className="h-full max-w-full object-contain drop-shadow-sm rounded-lg"
               onError={(e) => {
-                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1588964895597-cfccd6e2dbf9?w=300&auto=format&fit=crop&q=80';
-                (e.target as HTMLImageElement).src =
-                  'https://images.unsplash.com/photo-1580674684081-7617fbf3d745?w=300&auto=format&fit=crop&q=80';
+                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1580674684081-7617fbf3d745?w=300&auto=format&fit=crop&q=80';
               }}
             />
           </div>
@@ -48,10 +44,8 @@ export const SellChannels: React.FC = () => {
         return (
           <div className="h-20 flex items-center justify-center">
             <div className="w-16 h-16 rounded-2xl bg-emerald-100/70 border border-emerald-200 flex items-center justify-center relative shadow-2xs">
-              <Store className="w-8 h-8 text-emerald-700" />
-              <span className="absolute -top-1 -right-1 text-[10px] bg-emerald-700 text-white font-extrabold px-1 py-0.5 rounded">
-                eNAM
-              </span>
+              <Store className="w-8 h-8 text-emerald-600" />
+              <span className="absolute -top-1 -right-1 text-sm">🌾</span>
             </div>
           </div>
         );
@@ -64,6 +58,8 @@ export const SellChannels: React.FC = () => {
             </div>
           </div>
         );
+      default:
+        return null;
     }
   };
 
@@ -77,6 +73,8 @@ export const SellChannels: React.FC = () => {
         return 'bg-[#055a29] text-white hover:bg-[#044720]';
       case 'direct':
         return 'bg-white border border-blue-600 text-blue-600 hover:bg-blue-50';
+      default:
+        return 'bg-[#167A42] text-white';
     }
   };
 
@@ -129,7 +127,6 @@ export const SellChannels: React.FC = () => {
               key={channel.id}
               className="bg-white border border-gray-200 rounded-xl p-4 sm:p-5 flex flex-col justify-between gap-4 hover:shadow-md hover:-translate-y-0.5 transition-all"
             >
-              
               {/* Header */}
               <div className="flex flex-col gap-1">
                 {channel.type === 'blinkit' ? (
@@ -138,78 +135,55 @@ export const SellChannels: React.FC = () => {
                   </div>
                 ) : (
                   <span className="font-heading font-bold text-base text-gray-900">
-                    {channel.name}
+                    <AutoTranslate text={channel.name} />
                   </span>
                 )}
                 <span className="text-xs text-gray-500 font-medium">
-                  {channel.subtitle}
+                  <AutoTranslate text={channel.subtitle} />
                 </span>
                 
                 {priceMessage && (
                   <div className="mt-2 inline-flex items-center w-fit gap-1 bg-[#F2FCE8] border border-[#167A42]/30 px-2.5 py-1.5 rounded-lg shadow-sm">
                     <span className="text-[#167A42] font-extrabold text-[11px] tracking-wide">
-                      📈 {priceMessage}
+                      📈 <AutoTranslate text={priceMessage} />
                     </span>
                   </div>
                 )}
-        {mockBuyerChannels.map((channel) => (
-          <div
-            key={channel.id}
-            className="bg-white border border-gray-200 rounded-xl p-4 sm:p-5 flex flex-col justify-between gap-4 hover:shadow-md hover:-translate-y-0.5 transition-all"
-          >
-            {/* Header */}
-            <div className="flex flex-col gap-1">
-              {channel.type === 'blinkit' ? (
-                <div className="bg-[#ffc107] px-2 py-0.5 rounded text-black font-black text-sm w-fit tracking-tight">
-                  blinkit
-                </div>
-              ) : (
-                <span className="font-heading font-bold text-base text-gray-900">
-                  <AutoTranslate text={channel.name} />
-                </span>
-              )}
-              <span className="text-xs text-gray-500 font-medium">
-                <AutoTranslate text={channel.subtitle} />
-              </span>
+              </div>
+
+              {/* Features & Graphic */}
+              <div className="flex flex-col gap-3 mt-3">
+                <ul className="space-y-1.5">
+                  {channel.features.map((feat, idx) => (
+                    <li key={idx} className="text-xs font-medium text-gray-700 flex items-center gap-1.5">
+                      <Check className="w-3.5 h-3.5 text-[#167A42] stroke-[3]" />
+                      <span><AutoTranslate text={feat} /></span>
+                    </li>
+                  ))}
+                </ul>
+
+                <div className="my-1">{getChannelGraphic(channel.type)}</div>
+              </div>
+
+              {/* Action Button */}
+              <button
+                onClick={() => {
+                  let url = '';
+                  switch (channel.type) {
+                    case 'blinkit': url = 'https://blinkit.com/'; break;
+                    case 'swiggy': url = 'https://www.swiggy.com/instamart'; break;
+                    case 'mandi': url = 'https://enam.gov.in/'; break;
+                    case 'direct': 
+                      setShowBuyersModal(true); 
+                      return;
+                  }
+                  if (url) window.open(url, '_blank', 'noopener,noreferrer');
+                }}
+                className={`w-full py-2.5 px-4 rounded-lg font-bold text-xs transition-all ${getButtonStyles(channel.type)}`}
+              >
+                <AutoTranslate text={channel.buttonText} />
+              </button>
             </div>
-
-            {/* Features & Graphic */}
-            <div className="flex flex-col gap-3 mt-3">
-              <ul className="space-y-1.5">
-                {channel.features.map((feat, idx) => (
-                  <li key={idx} className="text-xs font-medium text-gray-700 flex items-center gap-1.5">
-                    <Check className="w-3.5 h-3.5 text-[#167A42] stroke-[3]" />
-                    <span><AutoTranslate text={feat} /></span>
-                  </li>
-                ))}
-              </ul>
-
-              <div className="my-1">{getChannelGraphic(channel.type)}</div>
-            </div>
-
-            {/* Action Button */}
-            <button
-              onClick={() => {
-                let url = '';
-                switch (channel.type) {
-                  case 'blinkit': url = 'https://blinkit.com/'; break;
-                  case 'swiggy': url = 'https://www.swiggy.com/instamart'; break;
-                  case 'mandi': url = 'https://enam.gov.in/'; break;
-                  case 'direct': 
-                    setShowBuyersModal(true); 
-                    return;
-                }
-                if (url) window.open(url, '_blank', 'noopener,noreferrer');
-              }}
-              className={`w-full py-2.5 px-4 rounded-lg font-bold text-xs transition-all ${getButtonStyles(channel.type)}`}
-              onClick={() => setSelectedChannelModal(channel)}
-              className={`w-full py-2.5 px-4 rounded-lg font-bold text-xs transition-all ${getButtonStyles(
-                channel.type
-              )}`}
-            >
-              <AutoTranslate text={channel.buttonText} />
-            </button>
-          </div>
           );
         })}
       </div>
@@ -294,7 +268,6 @@ export const SellChannels: React.FC = () => {
           </div>
         </div>
       )}
-
     </section>
   );
 };

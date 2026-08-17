@@ -1,13 +1,12 @@
 import express, { Request, Response, NextFunction } from 'express';
-import fetch from 'node-fetch';
 import https from 'https';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
+import { Pesticide, InputOrder, MarketPrice, ReportSummary } from './models.js';
 // @ts-ignore
 import Lot from '../src/models/Lots.ts';
-import { Lot, Pesticide, InputOrder } from './models.js';
-import { mockPesticides, mockInputPurchaseHistory, mockFarmerLots } from '../src/data/mockData.js';
+import { mockPesticides, mockInputPurchaseHistory, mockFarmerLots, mockMarketPricesDetails, mockReportSummary } from '../src/data/mockData.js';
 import bcrypt from 'bcryptjs';
 import { languageMiddleware } from './middleware/languageMiddleware';
 import { translateResponse } from './utils/responseTranslator';
@@ -24,16 +23,6 @@ app.use(cors());
 app.use(express.json());
 app.use(languageMiddleware);
 
-// Connect to MongoDB
-const MONGO_URI = process.env.MONGO_URL_LOTS;
-if (MONGO_URI) {
-  mongoose.connect(MONGO_URI)
-    .then(() => console.log('✅ Connected to MongoDB (Lots Database)'))
-    .catch((err) => console.error('❌ MongoDB Connection Error:', err));
-} else {
-  console.warn('⚠️ MONGO_URL_LOTS is not defined in .env. MongoDB will not be connected.');
-}
-
 // API Routes
 // In-memory fallbacks when MongoDB is offline
 let localLots = [...mockFarmerLots];
@@ -42,8 +31,7 @@ let localOrders = [...mockInputPurchaseHistory];
 // --- MONGODB SETUP ---
 let isMongoConnected = false;
 
-// Connect to MongoDB
-let MONGO_URI = process.env.MONGODB_URI || process.env.MONGO_URI || process.env.MONGO_URL || 'mongodb://127.0.0.1:27017/fasalnirnay';
+let MONGO_URI = process.env.MONGO_URL_LOTS || process.env.MONGODB_URI || process.env.MONGO_URI || process.env.MONGO_URL || 'mongodb://127.0.0.1:27017/fasalnirnay';
 if (MONGO_URI.endsWith(';')) {
   MONGO_URI = MONGO_URI.slice(0, -1);
 }
@@ -144,6 +132,14 @@ async function seedDatabase() {
       console.log('🌱 Seeding default input purchase orders to MongoDB...');
       await InputOrder.insertMany(mockInputPurchaseHistory);
     }
+
+    console.log('🌱 Re-seeding default market prices to MongoDB...');
+    await MarketPrice.deleteMany({});
+    await MarketPrice.insertMany(mockMarketPricesDetails);
+
+    console.log('🌱 Re-seeding default report summaries to MongoDB...');
+    await ReportSummary.deleteMany({});
+    await ReportSummary.create(mockReportSummary);
   } catch (err: any) {
     console.error('❌ Error seeding database:', err.message);
   }
@@ -397,7 +393,7 @@ app.post('/api/send-sms', async (req: Request, res: Response) => {
         message: message,
         language: 'english',
         flash: 0,
-        numbers: phone.replace(/[^0-9]/g, '').slice(-10) 
+        numbers: phone.replace(/[^0-9]/g, '').slice(-10)
       })
     });
 
@@ -415,7 +411,7 @@ app.post('/api/send-sms', async (req: Request, res: Response) => {
 app.get('/api/images', async (req: Request, res: Response) => {
   const query = req.query.q as string;
   const apiKey = process.env.PIXABAY_API_KEY;
-  
+
   if (!apiKey) {
     res.status(500).json({ error: 'Pixabay API key not configured on server' });
     return;
@@ -431,7 +427,7 @@ app.get('/api/images', async (req: Request, res: Response) => {
       `https://pixabay.com/api/?key=${apiKey}&q=${encodeURIComponent(query)}&image_type=photo&orientation=horizontal&per_page=3`
     );
     const data = await fetchResponse.json() as any;
-    
+
     if (data.hits && data.hits.length > 0) {
       res.json({ url: data.hits[0].webformatURL });
     } else {
@@ -443,8 +439,6 @@ app.get('/api/images', async (req: Request, res: Response) => {
   }
 });
 
-app.get('/api/recommendations', (req: Request, res: Response) => {
-  res.json({
 app.get('/api/recommendations', async (req: Request, res: Response): Promise<void> => {
   const payload = {
     recommendations: [
@@ -479,308 +473,162 @@ app.get('/api/recommendations', async (req: Request, res: Response): Promise<voi
   res.json(translatedPayload);
 });
 
-app.post('/api/orders', async (req: Request, res: Response): Promise<void> => {
-  const { channel, crop, location } = req.body;
-  if (!channel || !crop) {
-    res.status(400).json({ error: 'Channel and crop fields are required' });
-    return;
-  }
-
-  const payload = {
-    success: true,
-    orderId: `FN-${Math.floor(100000 + Math.random() * 900000)}`,
-    channel,
-    crop,
-    location: location || 'Nashik, Maharashtra',
-    status: 'DISPATCH_SCHEDULED',
-    statusText: 'Pickup dispatched within 2 hours',
-    estimatedPickup: 'Within 2 hours',
-  };
-
-  const translatedPayload = await translateResponse(payload, req.language);
-  res.status(201).json(translatedPayload);
-});
-
-// Explicit Text Translation Endpoint
-app.post('/api/translate', async (req: Request, res: Response): Promise<void> => {
-  try {
-    const { text, targetLanguage } = req.body;
-    const tgt = targetLanguage || req.language || 'en';
-
-    if (!text || typeof text !== 'string') {
-      res.status(400).json({ error: 'Valid text string is required' });
-      return;
-    }
-
-    const translatedText = await translateText(text, tgt);
-    res.json({ text, targetLanguage: tgt, translatedText });
-  } catch (error: any) {
-    res.status(500).json({ error: 'Translation failed', message: error.message });
-  }
-});
-
-// --- NEW ENDPOINTS FOR FARMER LOTS ---
-
-app.get('/api/lots', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    if (mongoose.connection.readyState !== 1) {
-      res.json(localLots);
-      return;
-    }
-    const lots = await Lot.find().sort({ createdAt: -1 });
-    res.json(lots);
-  } catch (err) {
-    next(err);
-  }
-});
-
-app.post('/api/lots', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const lotData = req.body;
-    if (mongoose.connection.readyState !== 1) {
-      if (!lotData.id) {
-        lotData.id = `lot-${Date.now()}`;
-      }
-      localLots.unshift(lotData);
-      res.status(201).json(lotData);
-      return;
-    }
-    const newLot = new Lot(lotData);
-    await newLot.save();
-    res.status(201).json(newLot);
-  } catch (err) {
-    next(err);
-  }
-});
-
-app.delete('/api/lots/:id', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { id } = req.params;
-    if (mongoose.connection.readyState !== 1) {
-      const initialLength = localLots.length;
-      localLots = localLots.filter(l => l.id !== id);
-      if (localLots.length === initialLength) {
-        res.status(404).json({ error: 'Lot not found' });
+    app.post('/api/orders', async (req: Request, res: Response): Promise<void> => {
+      const { channel, crop, location } = req.body;
+      if (!channel || !crop) {
+        res.status(400).json({ error: 'Channel and crop fields are required' });
         return;
       }
-      res.json({ success: true, message: 'Lot deleted successfully' });
-      return;
-    }
-    const result = await Lot.findOneAndDelete({ id });
-    if (!result) {
-      res.status(404).json({ error: 'Lot not found' });
-      return;
-    }
-    res.json({ success: true, message: 'Lot deleted successfully' });
-  } catch (err) {
-    next(err);
-  }
-});
-
-// --- NEW ENDPOINTS FOR PESTICIDES/INPUTS ---
-
-app.get('/api/pesticides', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    if (mongoose.connection.readyState !== 1) {
-      res.json(mockPesticides);
-      return;
-    }
-    const products = await Pesticide.find();
-    res.json(products);
-  } catch (err) {
-    next(err);
-  }
-});
-
-app.get('/api/orders/history', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    if (mongoose.connection.readyState !== 1) {
-      res.json(localOrders);
-      return;
-    }
-    const orders = await InputOrder.find().sort({ createdAt: -1 });
-    res.json(orders);
-  } catch (err) {
-    next(err);
-  }
-});
-
-app.post('/api/orders/history', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const orderData = req.body;
-    if (mongoose.connection.readyState !== 1) {
-      if (!orderData.id) {
-        orderData.id = `order-${Date.now()}`;
-      }
-      localOrders.unshift(orderData);
-      res.status(201).json(orderData);
-      return;
-    }
-    const newOrder = new InputOrder(orderData);
-    await newOrder.save();
-    res.status(201).json(newOrder);
-  } catch (err) {
-    next(err);
-  }
-});
-
-// GET all lots
-app.get('/api/lots', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const lots = await Lot.find().sort({ createdAt: -1 });
-    res.json({ success: true, data: lots });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Endpoint to save a new Lot to MongoDB
-app.post('/api/lots', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { cropName, variety, quantityKg, grade, condition, location, harvestDate, storageStatus, estValueRs, image, imageUrl, recommendation } = req.body;
-    
-    if (!cropName || !quantityKg || !recommendation) {
-      res.status(400).json({ error: 'cropName, quantityKg, and recommendation are required' });
-      return;
-    }
-
-    const newLot = new Lot({
-      cropName,
-      variety,
-      quantityKg,
-      grade,
-      condition,
-      location,
-      harvestDate,
-      storageStatus,
-      estValueRs,
-      image,
-      imageUrl,
-      recommendation
-    });
-
-    const savedLot = await newLot.save();
-    res.status(201).json({ success: true, data: savedLot });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// DELETE a lot
-app.delete('/api/lots/:id', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { id } = req.params;
-    const deletedLot = await Lot.findByIdAndDelete(id);
-    if (!deletedLot) {
-      res.status(404).json({ error: 'Lot not found' });
-      return;
-    }
-    res.json({ success: true, data: deletedLot });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Chatbot Endpoint (Hugging Face Integration)
-app.post('/api/chat', async (req: Request, res: Response, next: NextFunction) => {
-  try {
-    const { messages, language } = req.body;
-    if (!messages || !Array.isArray(messages) || messages.length === 0) {
-      res.status(400).json({ error: 'Conversation history (messages array) is required' });
-      return;
-    }
-
-    const hfToken = process.env.HF_API_TOKEN || process.env.HF_TOKEN;
-    const hfModel = process.env.HF_MODEL || 'mistralai/Mistral-7B-Instruct-v0.3';
-
-    if (!hfToken) {
-      console.warn('HF_TOKEN missing in .env');
-      res.status(500).json({ error: 'AI Assistant is currently unavailable (Missing API Key).' });
-      return;
-    }
-
-    const systemPrompt = `You are FasalNirnay AI, a highly knowledgeable agricultural assistant designed to help farmers in India.
-You provide expert advice on crop prices, market trends, weather impact, and farming techniques.
-Keep your answers concise, helpful, and friendly. Maximum 3-4 sentences.
-
-CRITICAL INSTRUCTION: You MUST automatically detect the language of the user's message and reply entirely in that SAME language. 
-If the user asks in Hindi, answer in Hindi. If Marathi, answer in Marathi. If English, answer in English. 
-Do not translate the user's message, just respond naturally in their language. Always preserve the user's meaning, context, and tone.`;
-
-    // Map frontend messages to HF format
-    const formattedMessages = [
-      { role: 'system', content: systemPrompt },
-      ...messages.map((msg: any) => ({
-        role: msg.sender === 'user' ? 'user' : 'assistant',
-        content: msg.text
-      }))
-    ];
-
-    try {
-      // DNS Patch for Indian ISPs blocking HuggingFace API subdomains
-      const customAgent = new https.Agent({
-        lookup: (hostname: string, options: any, callback: any) => {
-          if (hostname.includes('huggingface.co')) {
-             if (typeof options === 'object' && options.all) {
-               return callback(null, [{address: '108.159.80.125', family: 4}]);
-             }
-             return callback(null, '108.159.80.125', 4);
-          }
-          return require('dns').lookup(hostname, options, callback);
-        }
-      });
 
       const payload = {
-        model: hfModel,
-        messages: formattedMessages,
-        max_tokens: 250
+        success: true,
+        orderId: `FN-${Math.floor(100000 + Math.random() * 900000)}`,
+        channel,
+        crop,
+        location: location || 'Nashik, Maharashtra',
+        status: 'DISPATCH_SCHEDULED',
+        statusText: 'Pickup dispatched within 2 hours',
+        estimatedPickup: 'Within 2 hours',
       };
 
-      const fetchResponse = await fetch(`https://router.huggingface.co/hf-inference/v1/chat/completions`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${hfToken.trim()}`,
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(payload),
-        agent: customAgent
-      });
+      const translatedPayload = await translateResponse(payload, req.language);
+      res.status(201).json(translatedPayload);
+    });
 
-      if (!fetchResponse.ok) {
-        const errText = await fetchResponse.text();
-        console.error('HF API Error:', fetchResponse.status, errText);
-        res.status(502).json({ error: `Hugging Face API Error (${fetchResponse.status}): ${errText}` });
-        return;
+    // Explicit Text Translation Endpoint
+    app.post('/api/translate', async (req: Request, res: Response): Promise<void> => {
+      try {
+        const { text, targetLanguage } = req.body;
+        const tgt = targetLanguage || req.language || 'en';
+
+        if (!text || typeof text !== 'string') {
+          res.status(400).json({ error: 'Valid text string is required' });
+          return;
+        }
+
+        const translatedText = await translateText(text, tgt);
+        res.json({ text, targetLanguage: tgt, translatedText });
+      } catch (error: any) {
+        res.status(500).json({ error: 'Translation failed', message: error.message });
       }
+    });
 
-      const data = await fetchResponse.json() as any;
-      let aiReply = 'Sorry, I could not generate a response.';
-      
-      if (data.choices && data.choices.length > 0) {
-        aiReply = data.choices[0].message.content.trim();
+    // --- NEW ENDPOINTS FOR FARMER LOTS ---
+
+    app.get('/api/lots', async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        if (mongoose.connection.readyState !== 1) {
+          res.json(localLots);
+          return;
+        }
+        const lots = await Lot.find().sort({ createdAt: -1 });
+        res.json(lots);
+      } catch (err) {
+        next(err);
       }
+    });
 
-      res.json({ success: true, reply: aiReply });
-    } catch (hfError: any) {
-      console.error('Hugging Face Fetch Error:', hfError.message);
-      res.status(502).json({ error: `Hugging Face Connection Error: ${hfError.message}` });
-    }
-  } catch (error) {
-    next(error);
+    app.post('/api/lots', async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const lotData = req.body;
+        if (mongoose.connection.readyState !== 1) {
+          if (!lotData.id) {
+            lotData.id = `lot-${Date.now()}`;
+          }
+          localLots.unshift(lotData);
+          res.status(201).json(lotData);
+          return;
+        }
+        const newLot = new Lot(lotData);
+        await newLot.save();
+        res.status(201).json(newLot);
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    app.delete('/api/lots/:id', async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const { id } = req.params;
+        if (mongoose.connection.readyState !== 1) {
+          const initialLength = localLots.length;
+          localLots = localLots.filter(l => l.id !== id);
+          if (localLots.length === initialLength) {
+            res.status(404).json({ error: 'Lot not found' });
+            return;
+          }
+          res.json({ success: true, message: 'Lot deleted successfully' });
+          return;
+        }
+        const result = await Lot.findOneAndDelete({ id });
+        if (!result) {
+          res.status(404).json({ error: 'Lot not found' });
+          return;
+        }
+        res.json({ success: true, message: 'Lot deleted successfully' });
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    // --- NEW ENDPOINTS FOR PESTICIDES/INPUTS ---
+
+    app.get('/api/pesticides', async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        if (mongoose.connection.readyState !== 1) {
+          res.json(mockPesticides);
+          return;
+        }
+        const products = await Pesticide.find();
+        res.json(products);
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    app.get('/api/orders/history', async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        if (mongoose.connection.readyState !== 1) {
+          res.json(localOrders);
+          return;
+        }
+        const orders = await InputOrder.find().sort({ createdAt: -1 });
+        res.json(orders);
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    app.post('/api/orders/history', async (req: Request, res: Response, next: NextFunction) => {
+      try {
+        const orderData = req.body;
+        if (mongoose.connection.readyState !== 1) {
+          if (!orderData.id) {
+            orderData.id = `order-${Date.now()}`;
+          }
+          localOrders.unshift(orderData);
+          res.status(201).json(orderData);
+          return;
+        }
+        const newOrder = new InputOrder(orderData);
+        await newOrder.save();
+        res.status(201).json(newOrder);
+      } catch (err) {
+        next(err);
+      }
+    });
+
+    // Global Error Handler Middleware
+    app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+      console.error('Server Error:', err.message);
+      res.status(500).json({ error: 'Internal Server Error', message: err.message });
+    });
+
+    if(process.env.NODE_ENV !== 'test') {
+    app.listen(PORT, () => {
+      console.log(`🚀 FasalNirnay Express API Server running on port ${PORT}`);
+    });
   }
-});
 
-// Global Error Handler Middleware
-app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-  console.error('Server Error:', err.message);
-  res.status(500).json({ error: 'Internal Server Error', message: err.message });
-});
-
-if (process.env.NODE_ENV !== 'test') {
-  app.listen(PORT, () => {
-    console.log(`🚀 FasalNirnay Express API Server running on port ${PORT}`);
-  });
-}
-
-export default app;
+  export default app;
 

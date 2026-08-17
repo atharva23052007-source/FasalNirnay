@@ -39,12 +39,11 @@ interface AppContextType {
   
   // Page Data & Actions
   farmerLots: FarmerLot[];
-  addFarmerLot: (lot: Omit<FarmerLot, 'id'> | FarmerLot) => void;
+  addFarmerLot: (lot: any) => void;
+  deleteFarmerLot: (id: string) => void;
   cropRecommendations: CropRecommendation[];
   addCropRecommendation: (rec: Omit<CropRecommendation, 'id'> | CropRecommendation) => void;
   removeCropRecommendation: (id: string) => void;
-  addFarmerLot: (lot: Omit<FarmerLot, 'id'>) => void;
-  deleteFarmerLot: (id: string) => void;
   storageFacilities: StorageFacility[];
   isAddLotModalOpen: boolean;
   setIsAddLotModalOpen: (open: boolean) => void;
@@ -88,66 +87,56 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [notifications, setNotifications] = useState<NotificationItem[]>(mockNotifications);
   
   // Dynamic Page State
-  const [farmerLots, setFarmerLots] = useState<FarmerLot[]>(mockFarmerLots);
-  const [cropRecommendations, setCropRecommendations] = useState<CropRecommendation[]>(mockCropRecommendations);
   const [farmerLots, setFarmerLots] = useState<FarmerLot[]>([]);
+  const [cropRecommendations, setCropRecommendations] = useState<CropRecommendation[]>(mockCropRecommendations);
   const [storageFacilities] = useState<StorageFacility[]>(mockStorageFacilities);
   const [isAddLotModalOpen, setIsAddLotModalOpen] = useState<boolean>(false);
   const [selectedStorageFacility, setSelectedStorageFacility] = useState<StorageFacility | null>(null);
 
   // Fetch Lots from MongoDB on Mount
-  React.useEffect(() => {
+  useEffect(() => {
     const fetchLots = async () => {
       try {
         const response = await fetch('http://localhost:5000/api/lots');
         const json = await response.json();
-        if (json.success) {
+        // Check for MongoDB response format or basic array
+        if (json && json.success && Array.isArray(json.data)) {
           const lots = json.data;
-          
-          // Map MongoDB docs to FarmerLot format
           const mappedLots: FarmerLot[] = lots.map((doc: any) => ({
-            id: doc._id,
+            id: doc._id || doc.id,
             cropName: doc.cropName,
-            variety: doc.variety,
+            variety: doc.variety || 'Local',
             quantityKg: doc.quantityKg,
-            harvestDate: doc.harvestDate,
-            grade: doc.grade,
-            storageStatus: doc.storageStatus,
-            location: doc.location,
+            harvestDate: doc.harvestDate || '21 May',
+            grade: doc.grade || 'Grade A',
+            storageStatus: doc.storageStatus || 'On Farm',
+            location: doc.location || 'Nashik',
             condition: doc.condition || 'Fresh',
-            estValueRs: doc.estValueRs,
-            image: doc.image,
+            estValueRs: doc.estValueRs || (doc.quantityKg * 20),
+            image: doc.image || '/assets/tomato.jpg',
             recommendation: doc.recommendation
           }));
           
-          // Map MongoDB docs to CropRecommendation format
           const mappedRecs: CropRecommendation[] = lots.map((doc: any) => {
             if (!doc.recommendation) return null;
-            return { ...doc.recommendation, id: doc._id };
-          }).filter(Boolean);
+            return { ...doc.recommendation, id: doc._id || doc.id };
+          }).filter(Boolean) as CropRecommendation[];
           
-          setFarmerLots([...mappedLots, ...mockFarmerLots]);
-          setCropRecommendations([...mappedRecs, ...mockCropRecommendations]);
-        }
-      } catch (error) {
-        console.error('Error fetching lots from MongoDB:', error);
-      }
-    };
-    fetchLots();
-  useEffect(() => {
-    fetch('http://localhost:5000/api/lots')
-      .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data)) {
-          setFarmerLots(data);
+          setFarmerLots(mappedLots.length > 0 ? mappedLots : mockFarmerLots);
+          if (mappedRecs.length > 0) {
+            setCropRecommendations([...mappedRecs, ...mockCropRecommendations]);
+          }
+        } else if (Array.isArray(json)) {
+          setFarmerLots(json.length > 0 ? json : mockFarmerLots);
         } else {
           setFarmerLots(mockFarmerLots);
         }
-      })
-      .catch(err => {
-        console.error('Error fetching lots:', err);
+      } catch (error) {
+        console.error('Error fetching lots from MongoDB, using mock data:', error);
         setFarmerLots(mockFarmerLots);
-      });
+      }
+    };
+    fetchLots();
   }, []);
 
   // User Auth State
@@ -184,31 +173,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     );
   };
 
-  const addFarmerLot = (newLotData: Omit<FarmerLot, 'id'> | FarmerLot) => {
-    setFarmerLots(prev => [newLotData as FarmerLot, ...prev]);
-  };
-
-  const addCropRecommendation = (recData: Omit<CropRecommendation, 'id'> | CropRecommendation) => {
-    setCropRecommendations(prev => [recData as CropRecommendation, ...prev]);
-  };
-
-  const removeCropRecommendation = async (id: string) => {
-    try {
-      // First, attempt to delete from MongoDB if the ID matches a MongoDB _id
-      await fetch(`http://localhost:5000/api/lots/${id}`, { method: 'DELETE' });
-    } catch (error) {
-      console.error('Failed to delete lot from MongoDB:', error);
-    }
-    // Update local state
-    setCropRecommendations(prev => prev.filter(rec => rec.id !== id));
-    setFarmerLots(prev => prev.filter(lot => lot.id !== id));
   const addFarmerLot = (newLotData: Omit<FarmerLot, 'id'>) => {
+    const tempId = `lot-${Date.now()}`;
     const newLot: FarmerLot = {
       ...newLotData,
-      id: `lot-${Date.now()}`,
+      id: tempId,
     };
     setFarmerLots(prev => [newLot, ...prev]);
 
+    // Save to backend
     fetch('http://localhost:5000/api/lots', {
       method: 'POST',
       headers: {
@@ -217,8 +190,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       body: JSON.stringify(newLot),
     })
     .then(res => res.json())
-    .then(savedLot => {
-      console.log('Saved lot to backend:', savedLot);
+    .then(saved => {
+      console.log('Saved lot to backend:', saved);
     })
     .catch(err => {
       console.error('Error saving lot to backend:', err);
@@ -228,6 +201,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const deleteFarmerLot = (id: string) => {
     setFarmerLots(prev => prev.filter(l => l.id !== id));
 
+    // Delete on backend
     fetch(`http://localhost:5000/api/lots/${id}`, {
       method: 'DELETE',
     })
@@ -238,6 +212,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     .catch(err => {
       console.error('Error deleting lot from backend:', err);
     });
+  };
+
+  const addCropRecommendation = (recData: Omit<CropRecommendation, 'id'> | CropRecommendation) => {
+    setCropRecommendations(prev => [recData as CropRecommendation, ...prev]);
+  };
+
+  const removeCropRecommendation = async (id: string) => {
+    try {
+      await fetch(`http://localhost:5000/api/lots/${id}`, { method: 'DELETE' });
+    } catch (error) {
+      console.error('Failed to delete lot from MongoDB:', error);
+    }
+    setCropRecommendations(prev => prev.filter(rec => rec.id !== id));
+    setFarmerLots(prev => prev.filter(lot => lot.id !== id));
   };
 
   const openProfileModal = () => {
