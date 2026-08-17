@@ -2,6 +2,8 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
+import { Lot, Pesticide, InputOrder } from './models.js';
+import { mockPesticides, mockInputPurchaseHistory, mockFarmerLots } from '../src/data/mockData.js';
 import bcrypt from 'bcryptjs';
 import { languageMiddleware } from './middleware/languageMiddleware';
 import { translateResponse } from './utils/responseTranslator';
@@ -18,8 +20,18 @@ app.use(cors());
 app.use(express.json());
 app.use(languageMiddleware);
 
+// In-memory fallbacks when MongoDB is offline
+let localLots = [...mockFarmerLots];
+let localOrders = [...mockInputPurchaseHistory];
+
 // --- MONGODB SETUP ---
 let isMongoConnected = false;
+
+// Connect to MongoDB
+let MONGO_URI = process.env.MONGODB_URI || process.env.MONGO_URI || process.env.MONGO_URL || 'mongodb://127.0.0.1:27017/fasalnirnay';
+if (MONGO_URI.endsWith(';')) {
+  MONGO_URI = MONGO_URI.slice(0, -1);
+}
 
 // User Schema
 const userSchema = new mongoose.Schema({
@@ -86,18 +98,41 @@ const memoryUsers: Map<string, InMemoryUser> = new Map();
 
 // Initialize MongoDB Connection
 mongoose.set('strictQuery', false);
-mongoose
-  .connect(MONGODB_URI, {
-    serverSelectionTimeoutMS: 3000,
-  })
-  .then(() => {
+console.log(`Connecting to MongoDB...`);
+mongoose.connect(MONGO_URI, {
+  serverSelectionTimeoutMS: 3000,
+})
+  .then(async () => {
     isMongoConnected = true;
-    console.log(`🍃 Connected to MongoDB successfully at: ${MONGODB_URI}`);
+    console.log('🚀 Connected to MongoDB successfully');
+    await seedDatabase();
   })
-  .catch((err) => {
+  .catch(err => {
     isMongoConnected = false;
     console.warn(`⚠️ MongoDB connection warning (${err.message}). Operating with in-memory auth fallback.`);
   });
+
+async function seedDatabase() {
+  try {
+    const lotCount = await Lot.countDocuments();
+    if (lotCount === 0) {
+      console.log('🌱 Seeding default lots to MongoDB...');
+      await Lot.insertMany(mockFarmerLots);
+    }
+
+    console.log('🌱 Re-seeding default pesticide products to MongoDB...');
+    await Pesticide.deleteMany({});
+    await Pesticide.insertMany(mockPesticides);
+
+    const orderCount = await InputOrder.countDocuments();
+    if (orderCount === 0) {
+      console.log('🌱 Seeding default input purchase orders to MongoDB...');
+      await InputOrder.insertMany(mockInputPurchaseHistory);
+    }
+  } catch (err: any) {
+    console.error('❌ Error seeding database:', err.message);
+  }
+}
 
 // --- AUTHENTICATION ROUTES ---
 
@@ -399,6 +434,111 @@ app.post('/api/translate', async (req: Request, res: Response): Promise<void> =>
   }
 });
 
+// --- NEW ENDPOINTS FOR FARMER LOTS ---
+
+app.get('/api/lots', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (mongoose.connection.readyState !== 1) {
+      res.json(localLots);
+      return;
+    }
+    const lots = await Lot.find().sort({ createdAt: -1 });
+    res.json(lots);
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.post('/api/lots', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const lotData = req.body;
+    if (mongoose.connection.readyState !== 1) {
+      if (!lotData.id) {
+        lotData.id = `lot-${Date.now()}`;
+      }
+      localLots.unshift(lotData);
+      res.status(201).json(lotData);
+      return;
+    }
+    const newLot = new Lot(lotData);
+    await newLot.save();
+    res.status(201).json(newLot);
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.delete('/api/lots/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    if (mongoose.connection.readyState !== 1) {
+      const initialLength = localLots.length;
+      localLots = localLots.filter(l => l.id !== id);
+      if (localLots.length === initialLength) {
+        res.status(404).json({ error: 'Lot not found' });
+        return;
+      }
+      res.json({ success: true, message: 'Lot deleted successfully' });
+      return;
+    }
+    const result = await Lot.findOneAndDelete({ id });
+    if (!result) {
+      res.status(404).json({ error: 'Lot not found' });
+      return;
+    }
+    res.json({ success: true, message: 'Lot deleted successfully' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// --- NEW ENDPOINTS FOR PESTICIDES/INPUTS ---
+
+app.get('/api/pesticides', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (mongoose.connection.readyState !== 1) {
+      res.json(mockPesticides);
+      return;
+    }
+    const products = await Pesticide.find();
+    res.json(products);
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.get('/api/orders/history', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (mongoose.connection.readyState !== 1) {
+      res.json(localOrders);
+      return;
+    }
+    const orders = await InputOrder.find().sort({ createdAt: -1 });
+    res.json(orders);
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.post('/api/orders/history', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orderData = req.body;
+    if (mongoose.connection.readyState !== 1) {
+      if (!orderData.id) {
+        orderData.id = `order-${Date.now()}`;
+      }
+      localOrders.unshift(orderData);
+      res.status(201).json(orderData);
+      return;
+    }
+    const newOrder = new InputOrder(orderData);
+    await newOrder.save();
+    res.status(201).json(newOrder);
+  } catch (err) {
+    next(err);
+  }
+});
+
 // Global Error Handler Middleware
 app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
   console.error('Server Error:', err.message);
@@ -412,3 +552,4 @@ if (process.env.NODE_ENV !== 'test') {
 }
 
 export default app;
+

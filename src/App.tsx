@@ -44,9 +44,9 @@ const MainLayout: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f4f7f4] text-gray-900 flex flex-col antialiased">
+    <div className="min-h-screen bg-[#f4f7f4] text-gray-900 flex flex-col antialiased w-full overflow-x-hidden">
       <Navbar />
-      <main className="max-w-[1440px] mx-auto px-4 sm:px-6 py-6 flex-1 flex flex-col w-full">
+      <main className="max-w-[1440px] mx-auto px-4 sm:px-6 py-6 flex-1 flex flex-col w-full min-w-0">
         {renderCurrentPage()}
 
         {/* Global Interactive Modals */}

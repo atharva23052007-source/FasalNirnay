@@ -139,6 +139,57 @@ export interface ReportSummary {
   channelShare: { channel: string; percent: number; amount: number }[];
 }
 
+// --- AGRICULTURAL INPUTS / BUY PAGE TYPES ---
+
+export type PesticideCategory = 'Insecticide' | 'Fungicide' | 'Herbicide' | 'Nutrient & Fertilizer' | 'Bio-Pesticide';
+
+export interface PackOption {
+  label: string;   // e.g. "100 ml", "250 g"
+  priceRs: number;
+}
+
+export interface PesticideProduct {
+  id: string;
+  name: string;
+  brand: string;
+  category: PesticideCategory;
+  targetProblems: string[];   // e.g. ['aphids', 'whitefly']
+  suitableCrops: string[];    // e.g. ['Tomato', 'Onion']
+  image: string;
+  purpose: string;            // short one-liner
+  dosage: string;             // e.g. "2 ml / litre"
+  usageInstructions: string[];
+  precautions: string[];
+  rating: number;
+  reviewCount: number;
+  inStock: boolean;
+  packOptions: PackOption[];  // at least 2 pack sizes
+}
+
+export interface CartItem {
+  product: PesticideProduct;
+  packOption: PackOption;
+  qty: number;
+}
+
+export interface InputOrderItem {
+  productName: string;
+  brand: string;
+  packLabel: string;
+  qty: number;
+  priceRs: number;
+}
+
+export interface InputPurchaseOrder {
+  id: string;
+  orderNumber: string;
+  date: string;
+  items: InputOrderItem[];
+  totalRs: number;
+  status: 'Delivered' | 'In Transit' | 'Processing';
+  estimatedDelivery: string;
+}
+
 // --- USER & AUTH TYPES ---
 
 export type UserRole = 'Farmer' | 'Admin' | 'NGO/FPO';
