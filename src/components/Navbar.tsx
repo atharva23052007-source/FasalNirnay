@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React from 'react';
 import { useLanguage } from '../context/LanguageContext';
 import { useApp } from '../context/AppContext';
 import { mockLocations } from '../data/mockData';
@@ -20,24 +20,6 @@ export const Navbar: React.FC = () => {
     openProfileModal,
   } = useApp();
 
-  const [isLangMenuOpen, setIsLangMenuOpen] = useState(false);
-  const [isLocMenuOpen, setIsLocMenuOpen] = useState(false);
-
-  const langRef = useRef<HTMLDivElement>(null);
-  const locRef = useRef<HTMLDivElement>(null);
-
-  // Auto-close dropdowns when clicking outside
-  useEffect(() => {
-    const handleDocumentClick = () => {
-      setIsLangMenuOpen(false);
-      setIsLocMenuOpen(false);
-    };
-    document.addEventListener('click', handleDocumentClick);
-    return () => {
-      document.removeEventListener('click', handleDocumentClick);
-    };
-  }, []);
-
   const unreadCount = notifications.filter(n => !n.read).length;
 
   const navItems = [
@@ -47,12 +29,6 @@ export const Navbar: React.FC = () => {
     { id: 'Storage Locator', key: 'navStorageLocator' },
     { id: 'Orders', key: 'navOrders' },
     { id: 'Reports', key: 'navReports' },
-  ];
-
-  const languages: { id: Language; label: string }[] = [
-    { id: 'en', label: 'English' },
-    { id: 'hi', label: 'हिंदी (Hindi)' },
-    { id: 'mr', label: 'मराठी (Marathi)' },
   ];
 
   return (
@@ -103,57 +79,23 @@ export const Navbar: React.FC = () => {
         <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
 
           {/* Location Selector */}
-          <div className="relative" ref={locRef}>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsLocMenuOpen(!isLocMenuOpen);
-                setIsLangMenuOpen(false);
+          <div className="relative flex items-center">
+            <MapPin className="w-3.5 h-3.5 text-gray-500 absolute left-3 pointer-events-none" />
+            <select
+              value={selectedLocation.id}
+              onChange={(e) => {
+                const loc = mockLocations.find(l => l.id === e.target.value);
+                if (loc) setSelectedLocation(loc);
               }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-all shadow-sm"
+              className="appearance-none pl-8 pr-8 py-1.5 rounded-full border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 cursor-pointer focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all shadow-sm"
             >
-              <MapPin className="w-3.5 h-3.5 text-gray-500" />
-              <span className="hidden sm:inline">{selectedLocation.name}, {selectedLocation.state}</span>
-              <ChevronDown className="w-3 h-3 text-gray-400 hidden sm:inline" />
-            </button>
-
-            {isLocMenuOpen && (
-              <div 
-                onClick={(e) => e.stopPropagation()}
-                className="absolute right-0 mt-2 w-52 bg-white border border-gray-100 rounded-2xl shadow-xl py-2 z-50 animate-slideDown border-gray-200/50"
-              >
-                <div className="px-4 py-1.5 border-b border-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                  Select Location
-                </div>
-                {mockLocations.map(loc => {
-                  const active = selectedLocation.id === loc.id;
-                  return (
-                    <button
-                      key={loc.id}
-                      onClick={() => {
-                        setSelectedLocation(loc);
-                        setIsLocMenuOpen(false);
-                      }}
-                      className={`w-full text-left px-4 py-2.5 text-xs font-semibold flex items-center justify-between transition-colors ${
-                        active
-                          ? 'text-[#167A42] bg-[#E6F4EA]/40 font-bold'
-                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className={`w-1.5 h-1.5 rounded-full ${active ? 'bg-[#167A42]' : 'bg-transparent'}`} />
-                        <span>{loc.name}, {loc.state}</span>
-                      </div>
-                      {active && (
-                        <svg className="w-3.5 h-3.5 text-[#167A42]" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+              {mockLocations.map(loc => (
+                <option key={loc.id} value={loc.id}>
+                  {loc.name}, {loc.state}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="w-3 h-3 text-gray-400 absolute right-3 pointer-events-none" />
           </div>
 
           {/* Weather Pill */}
@@ -165,57 +107,18 @@ export const Navbar: React.FC = () => {
           </div>
 
           {/* Language Switcher */}
-          <div className="relative" ref={langRef}>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                setIsLangMenuOpen(!isLangMenuOpen);
-                setIsLocMenuOpen(false);
-              }}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-all shadow-sm"
+          <div className="relative flex items-center">
+            <Globe className="w-3.5 h-3.5 text-gray-500 absolute left-3 pointer-events-none" />
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value as Language)}
+              className="appearance-none pl-8 pr-8 py-1.5 rounded-full border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 cursor-pointer focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all shadow-sm"
             >
-              <Globe className="w-3.5 h-3.5 text-gray-500" />
-              <span className="hidden sm:inline">{languages.find(l => l.id === language)?.label.split(' ')[0]}</span>
-              <ChevronDown className="w-3 h-3 text-gray-400 hidden sm:inline" />
-            </button>
-
-            {isLangMenuOpen && (
-              <div 
-                onClick={(e) => e.stopPropagation()}
-                className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-xl py-2 z-50 animate-slideDown border-gray-200/50"
-              >
-                <div className="px-4 py-1.5 border-b border-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                  Select Language
-                </div>
-                {languages.map(lang => {
-                  const active = language === lang.id;
-                  return (
-                    <button
-                      key={lang.id}
-                      onClick={() => {
-                        setLanguage(lang.id);
-                        setIsLangMenuOpen(false);
-                      }}
-                      className={`w-full text-left px-4 py-2.5 text-xs font-semibold flex items-center justify-between transition-colors ${
-                        active
-                          ? 'text-[#167A42] bg-[#E6F4EA]/40 font-bold'
-                          : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className={`w-1.5 h-1.5 rounded-full ${active ? 'bg-[#167A42]' : 'bg-transparent'}`} />
-                        <span>{lang.label}</span>
-                      </div>
-                      {active && (
-                        <svg className="w-3.5 h-3.5 text-[#167A42]" fill="none" stroke="currentColor" strokeWidth="2.5" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+              <option value="en">English</option>
+              <option value="hi">हिंदी (Hindi)</option>
+              <option value="mr">मराठी (Marathi)</option>
+            </select>
+            <ChevronDown className="w-3 h-3 text-gray-400 absolute right-3 pointer-events-none" />
           </div>
 
           {/* Notifications Icon & Dropdown */}
