@@ -28,17 +28,13 @@ export const Navbar: React.FC = () => {
 
   // Auto-close dropdowns when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (langRef.current && !langRef.current.contains(event.target as Node)) {
-        setIsLangMenuOpen(false);
-      }
-      if (locRef.current && !locRef.current.contains(event.target as Node)) {
-        setIsLocMenuOpen(false);
-      }
+    const handleDocumentClick = () => {
+      setIsLangMenuOpen(false);
+      setIsLocMenuOpen(false);
     };
-    document.addEventListener('mousedown', handleClickOutside);
+    document.addEventListener('click', handleDocumentClick);
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('click', handleDocumentClick);
     };
   }, []);
 
@@ -109,7 +105,11 @@ export const Navbar: React.FC = () => {
           {/* Location Selector */}
           <div className="relative" ref={locRef}>
             <button
-              onClick={() => setIsLocMenuOpen(!isLocMenuOpen)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsLocMenuOpen(!isLocMenuOpen);
+                setIsLangMenuOpen(false);
+              }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-all shadow-sm"
             >
               <MapPin className="w-3.5 h-3.5 text-gray-500" />
@@ -118,7 +118,10 @@ export const Navbar: React.FC = () => {
             </button>
 
             {isLocMenuOpen && (
-              <div className="absolute right-0 mt-2 w-52 bg-white border border-gray-100 rounded-2xl shadow-xl py-2 z-50 animate-slideDown border-gray-200/50">
+              <div 
+                onClick={(e) => e.stopPropagation()}
+                className="absolute right-0 mt-2 w-52 bg-white border border-gray-100 rounded-2xl shadow-xl py-2 z-50 animate-slideDown border-gray-200/50"
+              >
                 <div className="px-4 py-1.5 border-b border-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                   Select Location
                 </div>
@@ -164,7 +167,11 @@ export const Navbar: React.FC = () => {
           {/* Language Switcher */}
           <div className="relative" ref={langRef}>
             <button
-              onClick={() => setIsLangMenuOpen(!isLangMenuOpen)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsLangMenuOpen(!isLangMenuOpen);
+                setIsLocMenuOpen(false);
+              }}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-gray-200 text-xs font-semibold text-gray-700 hover:bg-gray-50 transition-all shadow-sm"
             >
               <Globe className="w-3.5 h-3.5 text-gray-500" />
@@ -173,7 +180,10 @@ export const Navbar: React.FC = () => {
             </button>
 
             {isLangMenuOpen && (
-              <div className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-xl py-2 z-50 animate-slideDown border-gray-200/50">
+              <div 
+                onClick={(e) => e.stopPropagation()}
+                className="absolute right-0 mt-2 w-48 bg-white border border-gray-100 rounded-2xl shadow-xl py-2 z-50 animate-slideDown border-gray-200/50"
+              >
                 <div className="px-4 py-1.5 border-b border-gray-50 text-[10px] font-bold text-gray-400 uppercase tracking-wider">
                   Select Language
                 </div>

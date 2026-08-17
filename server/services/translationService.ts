@@ -72,9 +72,14 @@ export async function translateText(
   const hfToken = process.env.HF_API_TOKEN || '';
 
   // 3. Query Hugging Face Router API (Hindi or NLLB models)
-  if (targetLanguage === 'hi' && hfToken) {
+  if ((targetLanguage === 'hi' || targetLanguage === 'mr') && hfToken) {
     try {
-      const hfModel = process.env.HF_TRANSLATION_MODEL || 'Helsinki-NLP/opus-mt-en-hi';
+      const baseModel = process.env.HF_TRANSLATION_MODEL || 'Helsinki-NLP/opus-mt-en-hi';
+      let hfModel = baseModel;
+      if (targetLanguage === 'mr' && baseModel.endsWith('-hi')) {
+        hfModel = baseModel.slice(0, -2) + 'mr';
+      }
+
       const response = await fetch(
         `https://router.huggingface.co/hf-inference/models/${hfModel}`,
         {

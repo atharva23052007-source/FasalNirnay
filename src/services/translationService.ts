@@ -68,10 +68,16 @@ export async function translateDynamicText(
   }
 
   // 2. Call HuggingFace Inference API with Router URL & Token
-  if (targetLang === 'hi' && HUGGINGFACE_TOKEN) {
+  if ((targetLang === 'hi' || targetLang === 'mr') && HUGGINGFACE_TOKEN) {
     try {
+      const baseModel = (import.meta.env.VITE_HF_TRANSLATION_MODEL) || 'Helsinki-NLP/opus-mt-en-hi';
+      let hfModel = baseModel;
+      if (targetLang === 'mr' && baseModel.endsWith('-hi')) {
+        hfModel = baseModel.slice(0, -2) + 'mr';
+      }
+
       const response = await fetch(
-        'https://router.huggingface.co/hf-inference/models/Helsinki-NLP/opus-mt-en-hi',
+        `https://router.huggingface.co/hf-inference/models/${hfModel}`,
         {
           method: 'POST',
           headers: {
