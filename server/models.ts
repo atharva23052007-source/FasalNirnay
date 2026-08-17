@@ -103,3 +103,69 @@ const InputOrderSchema = new Schema<IInputOrder>({
 export const Lot = mongoose.model<ILot>('Lot', LotSchema);
 export const Pesticide = mongoose.model<IPesticide>('Pesticide', PesticideSchema);
 export const InputOrder = mongoose.model<IInputOrder>('InputOrder', InputOrderSchema);
+
+// 4. MarketPrice Model Schema
+export interface IMarketPrice extends Document {
+  id: string;
+  crop: string;
+  mandi: string;
+  state: string;
+  minPrice: number;
+  maxPrice: number;
+  modalPrice: number;
+  priceChangePercent: number;
+  arrivalQtyMT: number;
+  lastUpdated: string;
+}
+
+const MarketPriceSchema = new Schema<IMarketPrice>({
+  id: { type: String, required: true, unique: true },
+  crop: { type: String, required: true },
+  mandi: { type: String, required: true },
+  state: { type: String, required: true },
+  minPrice: { type: Number, required: true },
+  maxPrice: { type: Number, required: true },
+  modalPrice: { type: Number, required: true },
+  priceChangePercent: { type: Number, required: true },
+  arrivalQtyMT: { type: Number, required: true },
+  lastUpdated: { type: String, required: true }
+}, { timestamps: true });
+
+export const MarketPrice = mongoose.model<IMarketPrice>('MarketPrice', MarketPriceSchema);
+
+// 5. ReportSummary Model Schema
+export interface IReportSummary extends Document {
+  totalRevenueRs: number;
+  totalHarvestKg: number;
+  avgProfitMarginPercent: number;
+  activeLotsCount: number;
+  monthlyBreakdown: {
+    month: string;
+    revenue: number;
+    yield: number;
+  }[];
+  channelShare: {
+    channel: string;
+    amount: number;
+    percent: number;
+  }[];
+}
+
+const ReportSummarySchema = new Schema<IReportSummary>({
+  totalRevenueRs: { type: Number, required: true },
+  totalHarvestKg: { type: Number, required: true },
+  avgProfitMarginPercent: { type: Number, required: true },
+  activeLotsCount: { type: Number, required: true },
+  monthlyBreakdown: [{
+    month: { type: String, required: true },
+    revenue: { type: Number, required: true },
+    yield: { type: Number, required: true }
+  }],
+  channelShare: [{
+    channel: { type: String, required: true },
+    amount: { type: Number, required: true },
+    percent: { type: Number, required: true }
+  }]
+}, { timestamps: true });
+
+export const ReportSummary = mongoose.model<IReportSummary>('ReportSummary', ReportSummarySchema);

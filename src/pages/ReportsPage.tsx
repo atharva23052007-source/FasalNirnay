@@ -1,10 +1,120 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { mockReportSummary } from '../data/mockData';
-import { AutoTranslate } from '../context/LanguageContext';
+import { AutoTranslate, useLanguage } from '../context/LanguageContext';
 import { BarChart3, Download, TrendingUp, DollarSign, Sprout, PieChart } from 'lucide-react';
 
 export const ReportsPage: React.FC = () => {
-  const r = mockReportSummary;
+  const [r, setR] = useState(mockReportSummary);
+  const [isLoading, setIsLoading] = useState(true);
+  const { language, t } = useLanguage();
+
+  useEffect(() => {
+    fetch('http://localhost:5000/api/reports/summary')
+      .then((res) => {
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        return res.json();
+      })
+      .then((data) => {
+        if (data && data.totalRevenueRs) {
+          setR(data);
+        }
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        console.warn('Failed to load backend reports summary, falling back to mock data:', err);
+        setIsLoading(false);
+      });
+  }, []);
+
+  const exportToPDF = () => {
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      alert('Please allow popups to export the PDF report.');
+      return;
+    }
+
+    const titleText = t('Farm Yield & Earnings Reports', 'Farm Yield & Earnings Reports');
+    const revenueText = t('Season Net Revenue', 'Season Net Revenue');
+    const volumeText = t('Total Harvest Volume', 'Total Harvest Volume');
+    const marginText = t('Avg Profit Margin', 'Avg Profit Margin');
+    const lotsText = t('Active Crop Lots', 'Active Crop Lots');
+
+    const html = `
+      <html>
+        <head>
+          <title>${titleText}</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 40px; color: #111827; }
+            .header { border-bottom: 2px solid #167A42; padding-bottom: 20px; margin-bottom: 30px; }
+            .title { font-size: 24px; font-weight: bold; color: #167A42; }
+            .grid { display: grid; grid-template-cols: 1fr 1fr; gap: 20px; margin-bottom: 40px; }
+            .card { border: 1px solid #e5e7eb; padding: 20px; border-radius: 12px; }
+            .card-title { font-size: 11px; font-weight: bold; color: #6b7280; text-transform: uppercase; }
+            .card-value { font-size: 20px; font-weight: bold; margin-top: 8px; }
+            .table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+            .table th { background: #f9fafb; padding: 12px; text-align: left; font-size: 11px; font-weight: bold; color: #4b5563; border-bottom: 1px solid #e5e7eb; }
+            .table td { padding: 12px; border-bottom: 1px solid #f3f4f6; font-size: 12px; }
+            .badge { font-weight: bold; color: #167A42; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="title">${titleText}</div>
+            <div style="font-size: 11px; color: #9ca3af; margin-top: 5px;">
+              ${t('Generated dynamically on', 'Generated dynamically on')} ${new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+            </div>
+          </div>
+          <div class="grid">
+            <div class="card">
+              <div class="card-title">${revenueText}</div>
+              <div class="card-value" style="color: #167A42;">₹${r.totalRevenueRs.toLocaleString()}</div>
+            </div>
+            <div class="card">
+              <div class="card-title">${volumeText}</div>
+              <div class="card-value">${r.totalHarvestKg.toLocaleString()} kg</div>
+            </div>
+            <div class="card">
+              <div class="card-title">${marginText}</div>
+              <div class="card-value" style="color: #6d28d9;">${r.avgProfitMarginPercent}%</div>
+            </div>
+            <div class="card">
+              <div class="card-title">${lotsText}</div>
+              <div class="card-value">${r.activeLotsCount}</div>
+            </div>
+          </div>
+          <h3 style="color: #1f2937; margin-bottom: 15px;">${t('Monthly Farm Revenue Growth (2025)', 'Monthly Farm Revenue Growth (2025)')}</h3>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>${t('Month', 'Month')}</th>
+                <th>${t('Revenue', 'Revenue')}</th>
+                <th>${t('Yield Volume', 'Yield Volume')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${r.monthlyBreakdown.map(m => `
+                <tr>
+                  <td>${t(m.month, m.month)} 2025</td>
+                  <td class="badge">₹${m.revenue.toLocaleString()}</td>
+                  <td>${m.yield.toLocaleString()} kg</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+          <script>
+            window.onload = function() {
+              window.print();
+              setTimeout(function() { window.close(); }, 500);
+            }
+          </script>
+        </body>
+      </html>
+    `;
+
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+  };
 
   return (
     <div className="flex flex-col gap-6 font-sans">
@@ -21,7 +131,7 @@ export const ReportsPage: React.FC = () => {
         </div>
 
         <button
-          onClick={() => alert('📄 Financial Report PDF downloaded successfully!')}
+          onClick={exportToPDF}
           className="inline-flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-900 hover:bg-black text-white font-bold text-xs shadow-md transition-all self-start sm:self-auto"
         >
           <Download className="w-4 h-4" />

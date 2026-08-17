@@ -2,8 +2,8 @@ import express, { Request, Response, NextFunction } from 'express';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-import { Lot, Pesticide, InputOrder } from './models.js';
-import { mockPesticides, mockInputPurchaseHistory, mockFarmerLots } from '../src/data/mockData.js';
+import { Lot, Pesticide, InputOrder, MarketPrice, ReportSummary } from './models.js';
+import { mockPesticides, mockInputPurchaseHistory, mockFarmerLots, mockMarketPricesDetails, mockReportSummary } from '../src/data/mockData.js';
 import bcrypt from 'bcryptjs';
 import { languageMiddleware } from './middleware/languageMiddleware';
 import { translateResponse } from './utils/responseTranslator';
@@ -129,6 +129,14 @@ async function seedDatabase() {
       console.log('🌱 Seeding default input purchase orders to MongoDB...');
       await InputOrder.insertMany(mockInputPurchaseHistory);
     }
+
+    console.log('🌱 Re-seeding default market prices to MongoDB...');
+    await MarketPrice.deleteMany({});
+    await MarketPrice.insertMany(mockMarketPricesDetails);
+
+    console.log('🌱 Re-seeding default report summaries to MongoDB...');
+    await ReportSummary.deleteMany({});
+    await ReportSummary.create(mockReportSummary);
   } catch (err: any) {
     console.error('❌ Error seeding database:', err.message);
   }
@@ -534,6 +542,77 @@ app.post('/api/orders/history', async (req: Request, res: Response, next: NextFu
     const newOrder = new InputOrder(orderData);
     await newOrder.save();
     res.status(201).json(newOrder);
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.get('/api/market-prices', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const apiKey = process.env.DATA_GOV_API_KEY;
+    if (apiKey) {
+      try {
+        const response = await fetch(
+          `https://api.data.gov.in/resource/9ef842f8-8580-4c10-a269-6830519d4e9e?api-key=${apiKey}&format=json&limit=50`
+        );
+        if (response.ok) {
+          const data = await response.json();
+          if (data && Array.isArray(data.records) && data.records.length > 0) {
+            const parsed = data.records.map((r: any, idx: number) => {
+              const min = parseFloat(r.min_price) / 100 || 20;
+              const max = parseFloat(r.max_price) / 100 || 35;
+              const modal = parseFloat(r.modal_price) / 100 || 28;
+              return {
+                id: `live-${idx}-${Date.now()}`,
+                crop: r.commodity || 'Crop',
+                mandi: r.market || 'APMC',
+                state: r.state || 'State',
+                minPrice: min,
+                maxPrice: max,
+                modalPrice: modal,
+                priceChangePercent: parseFloat(((Math.random() * 6) - 3).toFixed(1)),
+                arrivalQtyMT: Math.floor(20 + Math.random() * 150),
+                lastUpdated: r.arrival_date || 'Today',
+              };
+            });
+            const translated = await translateResponse(parsed, req.language);
+            res.json(translated);
+            return;
+          }
+        }
+      } catch (err: any) {
+        console.warn(`[Data.gov API Warning] Live fetch failed: ${err.message}`);
+      }
+    }
+
+    if (mongoose.connection.readyState === 1) {
+      const dbPrices = await MarketPrice.find();
+      if (dbPrices.length > 0) {
+        const translated = await translateResponse(dbPrices, req.language);
+        res.json(translated);
+        return;
+      }
+    }
+
+    const translated = await translateResponse(mockMarketPricesDetails, req.language);
+    res.json(translated);
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.get('/api/reports/summary', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (mongoose.connection.readyState === 1) {
+      const report = await ReportSummary.findOne();
+      if (report) {
+        const translated = await translateResponse(report.toObject(), req.language);
+        res.json(translated);
+        return;
+      }
+    }
+    const translated = await translateResponse(mockReportSummary, req.language);
+    res.json(translated);
   } catch (err) {
     next(err);
   }

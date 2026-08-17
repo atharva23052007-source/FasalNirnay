@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { mockMarketPricesDetails } from '../data/mockData';
 import { Search, TrendingUp, TrendingDown } from 'lucide-react';
 import { AutoTranslate, useLanguage } from '../context/LanguageContext';
@@ -6,9 +6,29 @@ import { AutoTranslate, useLanguage } from '../context/LanguageContext';
 export const MarketPricesPage: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedState, setSelectedState] = useState('All');
+  const [prices, setPrices] = useState<any[]>(mockMarketPricesDetails);
+  const [isLoading, setIsLoading] = useState(true);
   const { t } = useLanguage();
 
-  const filteredPrices = mockMarketPricesDetails.filter((p) => {
+  useEffect(() => {
+    fetch('http://localhost:5000/api/market-prices')
+      .then((r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json();
+      })
+      .then((data) => {
+        if (Array.isArray(data) && data.length > 0) {
+          setPrices(data);
+        }
+        setIsLoading(false);
+      })
+      .catch((err) => {
+        console.warn('Failed to load live prices, using fallback data:', err);
+        setIsLoading(false);
+      });
+  }, []);
+
+  const filteredPrices = prices.filter((p) => {
     const matchesSearch =
       p.crop.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.mandi.toLowerCase().includes(searchTerm.toLowerCase());
