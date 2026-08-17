@@ -3,7 +3,9 @@ import https from 'https';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-import { Lot, Pesticide, InputOrder, MarketPrice, ReportSummary } from './models.js';
+import { Pesticide, InputOrder, MarketPrice, ReportSummary } from './models.js';
+// @ts-ignore
+import Lot from '../src/models/Lots.ts';
 import { mockPesticides, mockInputPurchaseHistory, mockFarmerLots, mockMarketPricesDetails, mockReportSummary } from '../src/data/mockData.js';
 import bcrypt from 'bcryptjs';
 import { languageMiddleware } from './middleware/languageMiddleware';
