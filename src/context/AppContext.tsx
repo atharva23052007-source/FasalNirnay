@@ -7,6 +7,7 @@ import {
   FarmerLot,
   StorageFacility,
   FarmerUser,
+  UserRole,
 } from '../types';
 import {
   mockLocations,
@@ -49,19 +50,21 @@ interface AppContextType {
   setIsProfileModalOpen: (open: boolean) => void;
   profileModalTab: ProfileTab;
   setProfileModalTab: (tab: ProfileTab) => void;
-  loginUser: (mobile: string, name?: string) => void;
-  signupUser: (name: string, mobile: string, location: string, farmSize: number) => void;
+  loginUser: (identifier: string, name?: string, role?: UserRole, token?: string) => void;
+  signupUser: (name: string, identifier: string, location: string, farmSize: number, role?: UserRole, token?: string) => void;
   logoutUser: () => void;
   openProfileModal: () => void;
 }
 
 const defaultUser: FarmerUser = {
-  name: 'Ramesh Patil',
-  mobile: '98220 12345',
+  name: '',
+  mobile: '',
+  emailOrPhone: '',
+  role: 'Farmer',
   location: 'Nashik, Maharashtra',
-  farmSizeAcres: 4.5,
+  farmSizeAcres: 4.0,
   mainCrops: ['Tomato', 'Red Onion', 'Spinach'],
-  isLoggedIn: true,
+  isLoggedIn: false,
   avatarUrl: '/assets/farmer_banner.jpg',
 };
 
@@ -99,9 +102,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   // User Auth State
-  const [user, setUser] = useState<FarmerUser>(defaultUser);
+  const [user, setUser] = useState<FarmerUser>(() => {
+    try {
+      const savedUser = localStorage.getItem('fasal_nirnay_user');
+      if (savedUser) {
+        const parsed = JSON.parse(savedUser);
+        if (parsed && parsed.isLoggedIn) {
+          return parsed;
+        }
+      }
+    } catch (e) {
+      console.warn('Failed to parse saved auth state', e);
+    }
+    return defaultUser;
+  });
+
   const [isProfileModalOpen, setIsProfileModalOpen] = useState<boolean>(false);
   const [profileModalTab, setProfileModalTab] = useState<ProfileTab>('profile');
+
+  // Persist user on changes
+  useEffect(() => {
+    if (user.isLoggedIn) {
+      localStorage.setItem('fasal_nirnay_user', JSON.stringify(user));
+    } else {
+      localStorage.removeItem('fasal_nirnay_user');
+    }
+  }, [user]);
 
   const markNotifRead = (id: string) => {
     setNotifications(prev =>
@@ -156,34 +182,57 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsProfileModalOpen(true);
   };
 
-  const loginUser = (mobile: string, name?: string) => {
-    setUser({
-      name: name || 'Ramesh Patil',
-      mobile: mobile.startsWith('+91') ? mobile : `+91 ${mobile}`,
+  const loginUser = (
+    identifier: string,
+    name?: string,
+    role: UserRole = 'Farmer',
+    token?: string
+  ) => {
+    const newUserState: FarmerUser = {
+      name: name || (identifier.includes('@') ? identifier.split('@')[0] : 'Farmer User'),
+      mobile: identifier,
+      emailOrPhone: identifier,
+      role: role,
       location: `${selectedLocation.name}, ${selectedLocation.state}`,
       farmSizeAcres: 4.5,
-      mainCrops: ['Tomato', 'Red Onion', 'Spinach'],
+      mainCrops: role === 'Farmer' ? ['Tomato', 'Red Onion', 'Spinach'] : ['Operations'],
       isLoggedIn: true,
       avatarUrl: '/assets/farmer_banner.jpg',
-    });
+      token: token || `token_${Date.now()}`,
+    };
+    setUser(newUserState);
     setProfileModalTab('profile');
+    setIsProfileModalOpen(false);
   };
 
-  const signupUser = (name: string, mobile: string, location: string, farmSize: number) => {
-    setUser({
+  const signupUser = (
+    name: string,
+    identifier: string,
+    location: string,
+    farmSize: number,
+    role: UserRole = 'Farmer',
+    token?: string
+  ) => {
+    const newUserState: FarmerUser = {
       name,
-      mobile: mobile.startsWith('+91') ? mobile : `+91 ${mobile}`,
-      location,
+      mobile: identifier,
+      emailOrPhone: identifier,
+      role: role,
+      location: location || 'Nashik, Maharashtra',
       farmSizeAcres: farmSize || 3.0,
-      mainCrops: ['Tomato', 'Onion'],
+      mainCrops: role === 'Farmer' ? ['Tomato', 'Onion'] : ['Operations'],
       isLoggedIn: true,
       avatarUrl: '/assets/farmer_banner.jpg',
-    });
+      token: token || `token_${Date.now()}`,
+    };
+    setUser(newUserState);
     setProfileModalTab('profile');
+    setIsProfileModalOpen(false);
   };
 
   const logoutUser = () => {
-    setUser(prev => ({ ...prev, isLoggedIn: false }));
+    setUser(defaultUser);
+    localStorage.removeItem('fasal_nirnay_user');
     setProfileModalTab('login');
   };
 

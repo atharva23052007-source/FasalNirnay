@@ -177,31 +177,39 @@ export const Navbar: React.FC = () => {
             {isNotifOpen && <NotificationsDropdown />}
           </div>
 
-          {/* User Profile Button */}
-          <div
-            onClick={openProfileModal}
-            className="flex items-center gap-2 cursor-pointer hover:bg-gray-100 p-1 px-2.5 rounded-full transition-all border border-gray-200 sm:border-transparent hover:border-gray-200"
-            title="Account & Profile"
-          >
-            <div className="w-7 h-7 rounded-full overflow-hidden border border-gray-200 bg-gray-100 flex-shrink-0">
-              <img
-                src={user.isLoggedIn ? user.avatarUrl : 'https://images.unsplash.com/photo-1595273670150-bd0c3c392e46?w=100&auto=format&fit=crop&q=80'}
-                alt="Farmer Avatar"
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1595273670150-bd0c3c392e46?w=100&auto=format&fit=crop&q=80';
-                }}
-              />
+          {/* User Profile & Role Badge */}
+          <div className="flex items-center gap-2">
+            <div
+              onClick={openProfileModal}
+              className="flex items-center gap-2 cursor-pointer hover:bg-emerald-50 p-1 px-2.5 rounded-full transition-all border border-emerald-100 hover:border-emerald-300"
+              title="Account & Profile Details"
+            >
+              <div className="w-7 h-7 rounded-full overflow-hidden border border-emerald-300 bg-gray-100 flex-shrink-0">
+                <img
+                  src={user.isLoggedIn ? user.avatarUrl : 'https://images.unsplash.com/photo-1595273670150-bd0c3c392e46?w=100&auto=format&fit=crop&q=80'}
+                  alt="Avatar"
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1595273670150-bd0c3c392e46?w=100&auto=format&fit=crop&q=80';
+                  }}
+                />
+              </div>
+              <div className="hidden md:flex flex-col text-left leading-none">
+                <span className="text-xs font-bold text-gray-900">
+                  {user.isLoggedIn ? user.name : t('hiFarmer', 'Hi, Farmer')}
+                </span>
+                <span className="text-[10px] font-extrabold text-[#167A42] bg-emerald-100 px-1.5 py-0.5 rounded-full mt-0.5 w-fit">
+                  {user.role || 'Farmer'}
+                </span>
+              </div>
+              <ChevronDown className="w-3 h-3 text-gray-400" />
             </div>
-            <span className="hidden md:inline text-xs font-bold text-gray-900">
-              {user.isLoggedIn ? `Hi, ${user.name.split(' ')[0]}` : t('hiFarmer', 'Hi, Farmer')}
-            </span>
-            <ChevronDown className="w-3 h-3 text-gray-400" />
           </div>
 
         </div>
 
       </div>
     </header>
+
   );
 };
