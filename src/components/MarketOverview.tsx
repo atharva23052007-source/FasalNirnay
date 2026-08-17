@@ -1,5 +1,5 @@
 import React from 'react';
-import { useLanguage } from '../context/LanguageContext';
+import { useLanguage, AutoTranslate } from '../context/LanguageContext';
 import { mockMarketMetrics } from '../data/mockData';
 import { ArrowDownRight, ArrowUpRight } from 'lucide-react';
 
@@ -7,8 +7,7 @@ export const MarketOverview: React.FC = () => {
   const { t } = useLanguage();
 
   return (
-    <div className="bg-white border border-gray-200 rounded-2xl p-5 flex flex-col justify-between shadow-sm">
-      
+    <div className="bg-white border border-gray-200 rounded-2xl p-5 flex flex-col justify-between shadow-sm font-sans">
       {/* Header */}
       <div className="flex items-center justify-between mb-3.5">
         <h3 className="font-heading font-bold text-base text-gray-900">
@@ -21,13 +20,15 @@ export const MarketOverview: React.FC = () => {
 
       {/* Metrics Grid */}
       <div className="grid grid-cols-2 gap-3.5 mb-3.5">
-        {mockMarketMetrics.map(m => (
+        {mockMarketMetrics.map((m) => (
           <div
             key={m.id}
             className="bg-[#FAFBFC] border border-[#EDF0F2] rounded-xl p-3.5 flex flex-col gap-1"
           >
-            <span className="text-xs font-semibold text-gray-700">{m.cropName}</span>
-            
+            <span className="text-xs font-semibold text-gray-700">
+              <AutoTranslate text={m.cropName} />
+            </span>
+
             <div className="flex items-baseline gap-1">
               <span className="font-heading text-2xl font-extrabold text-[#167A42] tracking-tight">
                 ₹{m.priceKg.toFixed(2)}
@@ -68,7 +69,6 @@ export const MarketOverview: React.FC = () => {
           </span>
         </div>
       </div>
-
     </div>
   );
 };

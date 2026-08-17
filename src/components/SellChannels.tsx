@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useLanguage } from '../context/LanguageContext';
+import React from 'react';
+import { useLanguage, AutoTranslate } from '../context/LanguageContext';
 import { useApp } from '../context/AppContext';
 import { mockBuyerChannels } from '../data/mockData';
 import { Check, ArrowRight, Store, Users, ShoppingBag, X, Phone, MapPin } from 'lucide-react';
@@ -27,6 +29,8 @@ export const SellChannels: React.FC = () => {
               className="h-full max-w-full object-contain drop-shadow-sm rounded-lg"
               onError={(e) => {
                 (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1588964895597-cfccd6e2dbf9?w=300&auto=format&fit=crop&q=80';
+                (e.target as HTMLImageElement).src =
+                  'https://images.unsplash.com/photo-1580674684081-7617fbf3d745?w=300&auto=format&fit=crop&q=80';
               }}
             />
           </div>
@@ -45,7 +49,9 @@ export const SellChannels: React.FC = () => {
           <div className="h-20 flex items-center justify-center">
             <div className="w-16 h-16 rounded-2xl bg-emerald-100/70 border border-emerald-200 flex items-center justify-center relative shadow-2xs">
               <Store className="w-8 h-8 text-emerald-700" />
-              <span className="absolute -top-1 -right-1 text-[10px] bg-emerald-700 text-white font-extrabold px-1 py-0.5 rounded">eNAM</span>
+              <span className="absolute -top-1 -right-1 text-[10px] bg-emerald-700 text-white font-extrabold px-1 py-0.5 rounded">
+                eNAM
+              </span>
             </div>
           </div>
         );
@@ -95,8 +101,7 @@ export const SellChannels: React.FC = () => {
   };
 
   return (
-    <section className="bg-white border border-gray-200 rounded-2xl p-5 sm:p-6 shadow-sm">
-      
+    <section className="bg-white border border-gray-200 rounded-2xl p-5 sm:p-6 shadow-sm font-sans">
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <h2 className="font-heading font-extrabold text-lg sm:text-xl text-[#167A42] tracking-tight">
@@ -147,6 +152,25 @@ export const SellChannels: React.FC = () => {
                     </span>
                   </div>
                 )}
+        {mockBuyerChannels.map((channel) => (
+          <div
+            key={channel.id}
+            className="bg-white border border-gray-200 rounded-xl p-4 sm:p-5 flex flex-col justify-between gap-4 hover:shadow-md hover:-translate-y-0.5 transition-all"
+          >
+            {/* Header */}
+            <div className="flex flex-col gap-1">
+              {channel.type === 'blinkit' ? (
+                <div className="bg-[#ffc107] px-2 py-0.5 rounded text-black font-black text-sm w-fit tracking-tight">
+                  blinkit
+                </div>
+              ) : (
+                <span className="font-heading font-bold text-base text-gray-900">
+                  <AutoTranslate text={channel.name} />
+                </span>
+              )}
+              <span className="text-xs text-gray-500 font-medium">
+                <AutoTranslate text={channel.subtitle} />
+              </span>
             </div>
 
             {/* Features & Graphic */}
@@ -155,14 +179,12 @@ export const SellChannels: React.FC = () => {
                 {channel.features.map((feat, idx) => (
                   <li key={idx} className="text-xs font-medium text-gray-700 flex items-center gap-1.5">
                     <Check className="w-3.5 h-3.5 text-[#167A42] stroke-[3]" />
-                    <span>{feat}</span>
+                    <span><AutoTranslate text={feat} /></span>
                   </li>
                 ))}
               </ul>
 
-              <div className="my-1">
-                {getChannelGraphic(channel.type)}
-              </div>
+              <div className="my-1">{getChannelGraphic(channel.type)}</div>
             </div>
 
             {/* Action Button */}
@@ -180,8 +202,12 @@ export const SellChannels: React.FC = () => {
                 if (url) window.open(url, '_blank', 'noopener,noreferrer');
               }}
               className={`w-full py-2.5 px-4 rounded-lg font-bold text-xs transition-all ${getButtonStyles(channel.type)}`}
+              onClick={() => setSelectedChannelModal(channel)}
+              className={`w-full py-2.5 px-4 rounded-lg font-bold text-xs transition-all ${getButtonStyles(
+                channel.type
+              )}`}
             >
-              {t(`sellOn${channel.name.replace(/\s+/g, '')}`, channel.buttonText)}
+              <AutoTranslate text={channel.buttonText} />
             </button>
           </div>
           );

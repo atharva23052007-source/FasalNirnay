@@ -1,6 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { CropRecommendation, FarmerLot } from '../types';
 import { useLanguage } from '../context/LanguageContext';
+import React from 'react';
+import { CropRecommendation } from '../types';
+import { useLanguage, AutoTranslate } from '../context/LanguageContext';
 import { useApp } from '../context/AppContext';
 import { Lightbulb, Scale, X, Recycle } from 'lucide-react';
 import { fetchCropImage } from '../utils/imageUtils';
@@ -122,6 +125,7 @@ export const ActionCard: React.FC<ActionCardProps> = ({ crop, onRemove }) => {
   return (
     <div
       className={`bg-white border border-gray-200 rounded-xl p-5 flex flex-col hover:shadow-md transition-all h-full relative ${getBorderColor()}`}
+      className={`bg-white border border-gray-200 rounded-xl p-5 flex flex-col hover:shadow-md transition-all h-full font-sans ${getBorderColor()}`}
     >
       {onRemove && (
         <div className="absolute -top-3 -right-3 z-10 flex flex-col items-end">
@@ -162,19 +166,22 @@ export const ActionCard: React.FC<ActionCardProps> = ({ crop, onRemove }) => {
               alt={cropName}
               className="w-full h-full object-cover rounded-full"
               onError={(e) => {
-                // Fallback SVG image if Unsplash fails
                 (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1592924357228-91a4daadcfea?w=200&auto=format&fit=crop&q=80';
               }}
             />
           </div>
           <div className="flex flex-col gap-0.5">
             <h3 className="font-heading font-bold text-lg text-gray-900 leading-tight">
-              {cropName}
+              <AutoTranslate text={cropName} />
             </h3>
             <div className="flex items-center text-xs text-gray-600 gap-2">
               <span className="font-semibold text-gray-800 flex items-center gap-1">
                 <Scale className="w-3 h-3 text-gray-500" />
                 {(crop.quantityKg || 0).toLocaleString()} kg
+              </span>
+              <span className="text-gray-400">•</span>
+              <span className="text-gray-500 text-[11.5px]">
+                {t('harvested', 'Harvested')}: <AutoTranslate text={crop.harvestDate} />
               </span>
             </div>
           </div>
@@ -187,10 +194,10 @@ export const ActionCard: React.FC<ActionCardProps> = ({ crop, onRemove }) => {
       {/* Action Advice */}
       <div className="flex flex-col gap-1 mb-4">
         <h4 className={`font-heading font-extrabold text-2xl tracking-tight leading-tight ${adviceStyles.action}`}>
-          {actionText}
+          <AutoTranslate text={actionText} />
         </h4>
         <p className={`text-sm font-medium ${adviceStyles.benefit}`}>
-          {benefitText}
+          <AutoTranslate text={benefitText} />
         </p>
       </div>
 
@@ -201,7 +208,7 @@ export const ActionCard: React.FC<ActionCardProps> = ({ crop, onRemove }) => {
           <span>{t('why', 'Why?')}</span>
         </div>
         <p className="text-sm text-gray-700 leading-relaxed">
-          {rationaleText}
+          <AutoTranslate text={rationaleText} />
         </p>
       </div>
 
@@ -241,6 +248,12 @@ export const ActionCard: React.FC<ActionCardProps> = ({ crop, onRemove }) => {
           >
             Sell Now
           </button>
+          <span className="text-xs text-gray-500 font-medium">
+            <AutoTranslate text={sellTimelineText} />
+          </span>
+          <span className="font-heading font-bold text-sm text-gray-900">
+            <AutoTranslate text={crop.sellDateText} />
+          </span>
         </div>
       </div>
     </div>
