@@ -7,6 +7,33 @@ export const StorageLocatorPage: React.FC = () => {
   const { storageFacilities, setSelectedStorageFacility, selectedLocation } = useApp();
   const [cropFilter, setCropFilter] = useState('All');
 
+  const getDynamicDistance = (storeName: string, selectedCity: string, defaultDist: number) => {
+    const storeNameLower = storeName.toLowerCase();
+    const cityLower = selectedCity.toLowerCase();
+
+    if (cityLower === 'nashik') {
+      if (storeNameLower.includes('lasalgaon')) return 44.5;
+      return defaultDist;
+    }
+    if (cityLower === 'lasalgaon') {
+      if (storeNameLower.includes('lasalgaon')) return 1.8;
+      return 44.5;
+    }
+    if (cityLower === 'pune') {
+      if (storeNameLower.includes('lasalgaon')) return 235.0;
+      return 212.0;
+    }
+    if (cityLower === 'indore') {
+      if (storeNameLower.includes('lasalgaon')) return 378.0;
+      return 410.0;
+    }
+    if (cityLower === 'kolar') {
+      if (storeNameLower.includes('lasalgaon')) return 965.0;
+      return 980.0;
+    }
+    return defaultDist;
+  };
+
   const filteredFacilities = storageFacilities.filter((s) => {
     if (cropFilter === 'All') return true;
     return s.suitableCrops.some((c) => c.toLowerCase().includes(cropFilter.toLowerCase()));
@@ -69,7 +96,7 @@ export const StorageLocatorPage: React.FC = () => {
 
                 <span className="text-xs font-medium text-gray-500 flex items-center gap-1">
                   <MapPin className="w-3.5 h-3.5 text-gray-400" /> <AutoTranslate text={store.location} /> (
-                  <strong>{store.distanceKm} km <AutoTranslate text="away" /></strong>)
+                  <strong>{getDynamicDistance(store.name, selectedLocation.name, store.distanceKm)} km <AutoTranslate text="away" /></strong>)
                 </span>
 
                 <div className="flex items-center gap-2 text-xs mt-1">
