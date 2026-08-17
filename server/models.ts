@@ -100,9 +100,9 @@ const InputOrderSchema = new Schema<IInputOrder>({
   estimatedDelivery: { type: String, required: true }
 }, { timestamps: true });
 
-export const Lot = mongoose.model<ILot>('Lot', LotSchema);
-export const Pesticide = mongoose.model<IPesticide>('Pesticide', PesticideSchema);
-export const InputOrder = mongoose.model<IInputOrder>('InputOrder', InputOrderSchema);
+export const Lot = mongoose.models.Lot || mongoose.model<ILot>('Lot', LotSchema);
+export const Pesticide = mongoose.models.Pesticide || mongoose.model<IPesticide>('Pesticide', PesticideSchema);
+export const InputOrder = mongoose.models.InputOrder || mongoose.model<IInputOrder>('InputOrder', InputOrderSchema);
 
 // 4. MarketPrice Model Schema
 export interface IMarketPrice extends Document {
@@ -131,7 +131,7 @@ const MarketPriceSchema = new Schema<IMarketPrice>({
   lastUpdated: { type: String, required: true }
 }, { timestamps: true });
 
-export const MarketPrice = mongoose.model<IMarketPrice>('MarketPrice', MarketPriceSchema);
+export const MarketPrice = mongoose.models.MarketPrice || mongoose.model<IMarketPrice>('MarketPrice', MarketPriceSchema);
 
 // 5. ReportSummary Model Schema
 export interface IReportSummary extends Document {
@@ -168,4 +168,4 @@ const ReportSummarySchema = new Schema<IReportSummary>({
   }]
 }, { timestamps: true });
 
-export const ReportSummary = mongoose.model<IReportSummary>('ReportSummary', ReportSummarySchema);
+export const ReportSummary = mongoose.models.ReportSummary || mongoose.model<IReportSummary>('ReportSummary', ReportSummarySchema);

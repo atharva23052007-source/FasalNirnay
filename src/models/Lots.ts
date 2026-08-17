@@ -16,6 +16,6 @@ const lotSchema = new mongoose.Schema({
   recommendation: { type: Object, required: true }
 }, { timestamps: true });
 
-const Lot = mongoose.model("Lot", lotSchema);
+const Lot = mongoose.models.Lot || mongoose.model("Lot", lotSchema);
 
 export default Lot;
