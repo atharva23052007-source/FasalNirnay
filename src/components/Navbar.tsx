@@ -79,15 +79,15 @@ export const Navbar: React.FC = () => {
         <div className="flex items-center gap-1.5 sm:gap-3 flex-shrink-0">
 
           {/* Location Selector */}
-          <div className="relative flex items-center">
-            <MapPin className="w-3.5 h-3.5 text-gray-500 absolute left-3 pointer-events-none" />
+          <div className="relative flex items-center h-9">
+            <MapPin className="w-3.5 h-3.5 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <select
               value={selectedLocation.id}
               onChange={(e) => {
                 const loc = mockLocations.find(l => l.id === e.target.value);
                 if (loc) setSelectedLocation(loc);
               }}
-              className="appearance-none pl-8 pr-8 py-1.5 rounded-full border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 cursor-pointer focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all shadow-sm"
+              className="h-full appearance-none pl-8 pr-8 rounded-full border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#167A42]/20 transition-all shadow-sm leading-none"
             >
               {mockLocations.map(loc => (
                 <option key={loc.id} value={loc.id}>
@@ -95,11 +95,11 @@ export const Navbar: React.FC = () => {
                 </option>
               ))}
             </select>
-            <ChevronDown className="w-3 h-3 text-gray-400 absolute right-3 pointer-events-none" />
+            <ChevronDown className="w-3 h-3 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
           {/* Weather Pill */}
-          <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-gray-50 border border-gray-100 text-xs">
+          <div className="hidden sm:flex items-center gap-1.5 px-3.5 h-9 rounded-full bg-gray-50 border border-gray-100 text-xs font-medium">
             <span>☀️</span>
             <span className="font-bold text-gray-900">26°C</span>
             <span className="text-gray-300">|</span>
@@ -107,18 +107,18 @@ export const Navbar: React.FC = () => {
           </div>
 
           {/* Language Switcher */}
-          <div className="relative flex items-center">
-            <Globe className="w-3.5 h-3.5 text-gray-500 absolute left-3 pointer-events-none" />
+          <div className="relative flex items-center h-9">
+            <Globe className="w-3.5 h-3.5 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <select
               value={language}
               onChange={(e) => setLanguage(e.target.value as Language)}
-              className="appearance-none pl-8 pr-8 py-1.5 rounded-full border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 cursor-pointer focus:outline-none focus:ring-1 focus:ring-emerald-500 transition-all shadow-sm"
+              className="h-full appearance-none pl-8 pr-8 rounded-full border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#167A42]/20 transition-all shadow-sm leading-none"
             >
               <option value="en">English</option>
               <option value="hi">हिंदी (Hindi)</option>
               <option value="mr">मराठी (Marathi)</option>
             </select>
-            <ChevronDown className="w-3 h-3 text-gray-400 absolute right-3 pointer-events-none" />
+            <ChevronDown className="w-3 h-3 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
           {/* Notifications Icon & Dropdown */}
