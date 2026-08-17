@@ -45,7 +45,7 @@ export const BestActions: React.FC = () => {
       </div>
 
       {/* Cards List */}
-      <div className="flex flex-col gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {mockCropRecommendations.map(crop => (
           <ActionCard key={crop.id} crop={crop} />
         ))}
