@@ -56,8 +56,8 @@ interface AppContextType {
   setIsProfileModalOpen: (open: boolean) => void;
   profileModalTab: ProfileTab;
   setProfileModalTab: (tab: ProfileTab) => void;
-  loginUser: (identifier: string, name?: string, role?: UserRole, token?: string) => void;
-  signupUser: (name: string, identifier: string, location: string, farmSize: number, role?: UserRole, token?: string) => void;
+  loginUser: (identifier: string, name?: string, role?: UserRole, token?: string, coordinates?: { lat: number; lon: number }) => void;
+  signupUser: (name: string, identifier: string, location: string, farmSize: number, role?: UserRole, token?: string, coordinates?: { lat: number; lon: number }) => void;
   logoutUser: () => void;
   openProfileModal: () => void;
 }
@@ -241,7 +241,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     identifier: string,
     name?: string,
     role: UserRole = 'Farmer',
-    token?: string
+    token?: string,
+    coordinates?: { lat: number; lon: number }
   ) => {
     const newUserState: FarmerUser = {
       name: name || (identifier.includes('@') ? identifier.split('@')[0] : 'Farmer User'),
@@ -249,6 +250,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       emailOrPhone: identifier,
       role: role,
       location: `${selectedLocation.name}, ${selectedLocation.state}`,
+      coordinates: coordinates,
       farmSizeAcres: 4.5,
       mainCrops: role === 'Farmer' ? ['Tomato', 'Red Onion', 'Spinach'] : ['Operations'],
       isLoggedIn: true,
@@ -266,7 +268,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     location: string,
     farmSize: number,
     role: UserRole = 'Farmer',
-    token?: string
+    token?: string,
+    coordinates?: { lat: number; lon: number }
   ) => {
     const newUserState: FarmerUser = {
       name,
@@ -274,6 +277,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       emailOrPhone: identifier,
       role: role,
       location: location || 'Nashik, Maharashtra',
+      coordinates: coordinates,
       farmSizeAcres: farmSize || 3.0,
       mainCrops: role === 'Farmer' ? ['Tomato', 'Onion'] : ['Operations'],
       isLoggedIn: true,

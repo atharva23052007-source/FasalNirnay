@@ -24,7 +24,6 @@ export const Navbar: React.FC = () => {
 
   const navItems = [
     { id: 'Dashboard', key: 'navDashboard' },
-    { id: 'My Lots', key: 'navMyLots' },
     { id: 'Market Prices', key: 'navMarketPrices' },
     { id: 'Storage Locator', key: 'navStorageLocator' },
     { id: 'Orders', key: 'navOrders' },

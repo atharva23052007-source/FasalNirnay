@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect, useCallback } from 'react';
 import { useApp } from '../context/AppContext';
 import {
   Snowflake,
@@ -24,16 +24,153 @@ import {
   GitCompare,
   Eye,
   Navigation,
+  Loader2,
+  RefreshCcw,
 } from 'lucide-react';
-import { AutoTranslate } from '../context/LanguageContext';
-import { Snowflake, MapPin, Star, ArrowRight } from 'lucide-react';
 
 export const StorageLocatorPage: React.FC = () => {
   const {
     storageFacilities,
     setSelectedStorageFacility,
     selectedLocation,
+    user,
   } = useApp();
+
+  // =========================================================
+  // GPS / LOCATION STATE
+  // =========================================================
+
+  const [userCoords, setUserCoords] = useState<{ lat: number; lon: number } | null>(
+    // Initialize from user profile if available (stored at login/signup)
+    user.coordinates ?? null
+  );
+  const [userLocationLabel, setUserLocationLabel] = useState<string>(
+    user.coordinates ? user.location : selectedLocation.name + ', ' + selectedLocation.state
+  );
+  const [isGpsLoading, setIsGpsLoading] = useState(false);
+  const [gpsError, setGpsError] = useState('');
+
+  const LOCATIONIQ_TOKEN =
+    ((import.meta as any).env && (import.meta as any).env.VITE_LOCATIONIQ_TOKEN) ||
+    'pk.87f2b6b039413f1737e408d6694602f3';
+
+  // =========================================================
+  // HAVERSINE FORMULA — real GPS distance in km
+  // =========================================================
+
+  const haversineDistance = useCallback(
+    (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+      const R = 6371; // Earth radius in km
+      const dLat = ((lat2 - lat1) * Math.PI) / 180;
+      const dLon = ((lon2 - lon1) * Math.PI) / 180;
+      const a =
+        Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+        Math.cos((lat1 * Math.PI) / 180) *
+          Math.cos((lat2 * Math.PI) / 180) *
+          Math.sin(dLon / 2) *
+          Math.sin(dLon / 2);
+      const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+      return parseFloat((R * c).toFixed(1));
+    },
+    []
+  );
+
+  // Get the effective distance: GPS Haversine if coords available, else legacy fallback
+  const getDistance = useCallback(
+    (store: { lat?: number; lon?: number; name: string; distanceKm: number }): number => {
+      if (userCoords && store.lat !== undefined && store.lon !== undefined) {
+        return haversineDistance(userCoords.lat, userCoords.lon, store.lat, store.lon);
+      }
+      // Legacy text-based fallback
+      const storeNameLower = store.name.toLowerCase();
+      const cityLower = selectedLocation.name.toLowerCase();
+      if (cityLower === 'nashik') {
+        if (storeNameLower.includes('lasalgaon')) return 44.5;
+        return store.distanceKm;
+      }
+      if (cityLower === 'lasalgaon') {
+        if (storeNameLower.includes('lasalgaon')) return 1.8;
+        return 44.5;
+      }
+      if (cityLower === 'pune') {
+        if (storeNameLower.includes('lasalgaon')) return 235.0;
+        return 212.0;
+      }
+      if (cityLower === 'indore') {
+        if (storeNameLower.includes('lasalgaon')) return 378.0;
+        return 410.0;
+      }
+      if (cityLower === 'kolar') {
+        if (storeNameLower.includes('lasalgaon')) return 965.0;
+        return 980.0;
+      }
+      return store.distanceKm;
+    },
+    [userCoords, selectedLocation.name, haversineDistance]
+  );
+
+  // Reverse geocode coordinates -> human label
+  const reverseGeocode = useCallback(async (lat: number, lon: number) => {
+    try {
+      const res = await fetch(
+        `https://us1.locationiq.com/v1/reverse?key=${LOCATIONIQ_TOKEN}&lat=${lat}&lon=${lon}&format=json`
+      );
+      if (res.ok) {
+        const data = await res.json();
+        const a = data.address || {};
+        const place = a.village || a.suburb || a.town || a.city || a.municipality || '';
+        const district = a.county || a.state_district || '';
+        const state = a.state || '';
+        const parts = [place, district, state].filter(Boolean);
+        return parts.length > 0 ? parts.join(', ') : data.display_name?.split(', ').slice(0, 3).join(', ') || '';
+      }
+    } catch {}
+    // Nominatim fallback
+    try {
+      const res2 = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`
+      );
+      if (res2.ok) {
+        const d = await res2.json();
+        const a = d.address || {};
+        const place = a.village || a.suburb || a.town || a.city || '';
+        const state = a.state || '';
+        return [place, state].filter(Boolean).join(', ') || d.display_name?.split(', ').slice(0, 3).join(', ');
+      }
+    } catch {}
+    return `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
+  }, [LOCATIONIQ_TOKEN]);
+
+  // Detect live GPS and reverse geocode
+  const detectLiveGPS = useCallback(() => {
+    setGpsError('');
+    if (!navigator.geolocation) {
+      setGpsError('Geolocation not supported by your browser.');
+      return;
+    }
+    setIsGpsLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        const { latitude: lat, longitude: lon } = pos.coords;
+        setUserCoords({ lat, lon });
+        const label = await reverseGeocode(lat, lon);
+        setUserLocationLabel(label);
+        setIsGpsLoading(false);
+      },
+      () => {
+        setGpsError('Location permission denied. Using profile location.');
+        setIsGpsLoading(false);
+      },
+      { timeout: 10000, enableHighAccuracy: true }
+    );
+  }, [reverseGeocode]);
+
+  // Auto-detect GPS on mount if no coords stored
+  useEffect(() => {
+    if (!userCoords) {
+      detectLiveGPS();
+    }
+  }, []);
 
   // =========================================================
   // FILTERS
@@ -703,13 +840,16 @@ const cities = useMemo(() => {
       store.rating * 2
     );
 
-    // Distance
-    if (store.distanceKm <= 10) {
+    // Distance — use GPS Haversine if available
+    const distance = getDistance(store);
+    if (distance <= 10) {
       score += 10;
-    } else if (store.distanceKm <= 20) {
+    } else if (distance <= 20) {
       score += 6;
+    } else if (distance <= 50) {
+      score += 4;
     } else {
-      score += 3;
+      score += 2;
     }
 
     return Math.round(score);
@@ -774,10 +914,7 @@ const cities = useMemo(() => {
     return [...result].sort(
       (a, b) => {
         if (sortBy === 'distance') {
-          return (
-            a.distanceKm -
-            b.distanceKm
-          );
+          return getDistance(a) - getDistance(b);
         }
 
         if (sortBy === 'price') {
@@ -945,26 +1082,65 @@ const cities = useMemo(() => {
 
           </div>
 
-          {/* LOCATION */}
+          {/* GPS LOCATION BANNER */}
 
-          <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-green-50 border border-green-100">
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
 
-            <div className="w-9 h-9 rounded-xl bg-white flex items-center justify-center">
-              <MapPin className="w-4 h-4 text-[#167A42]" />
+            <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl border flex-1 ${userCoords ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
+
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${userCoords ? 'bg-emerald-100' : 'bg-amber-100'}`}>
+                {isGpsLoading ? (
+                  <Loader2 className="w-4 h-4 text-[#167A42] animate-spin" />
+                ) : (
+                  <MapPin className={`w-4 h-4 ${userCoords ? 'text-[#167A42]' : 'text-amber-600'}`} />
+                )}
+              </div>
+
+              <div className="flex-1 min-w-0">
+
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <p className="text-[10px] uppercase tracking-wide font-bold text-gray-400">
+                    {userCoords ? 'Your GPS Location' : 'Profile Location'}
+                  </p>
+                  {userCoords && (
+                    <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[9px] font-bold">
+                      <Navigation className="w-2.5 h-2.5" /> GPS Active
+                    </span>
+                  )}
+                </div>
+
+                <p className="text-sm font-bold text-gray-800 truncate">
+                  {isGpsLoading ? 'Detecting location...' : (userLocationLabel || selectedLocation.name + ', ' + selectedLocation.state)}
+                </p>
+
+                {userCoords && (
+                  <p className="text-[10px] font-mono text-gray-400 mt-0.5">
+                    {userCoords.lat.toFixed(5)}, {userCoords.lon.toFixed(5)}
+                  </p>
+                )}
+
+                {gpsError && (
+                  <p className="text-[10px] text-amber-600 font-semibold mt-0.5">{gpsError}</p>
+                )}
+
+              </div>
+
             </div>
 
-            <div>
-
-              <p className="text-[10px] uppercase tracking-wide font-bold text-gray-400">
-                Current Location
-              </p>
-
-              <p className="text-sm font-bold text-gray-800">
-                {selectedLocation?.name ||
-                  'Select Location'}
-              </p>
-
-            </div>
+            <button
+              type="button"
+              onClick={detectLiveGPS}
+              disabled={isGpsLoading}
+              className="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#167A42] hover:bg-[#126335] text-white text-xs font-extrabold transition-all shadow-sm active:scale-95 disabled:opacity-60 flex-shrink-0"
+              title="Detect live GPS location"
+            >
+              {isGpsLoading ? (
+                <Loader2 className="w-3.5 h-3.5 animate-spin" />
+              ) : (
+                <RefreshCcw className="w-3.5 h-3.5" />
+              )}
+              {isGpsLoading ? 'Detecting...' : 'Detect GPS'}
+            </button>
 
           </div>
 
@@ -1463,11 +1639,16 @@ const cities = useMemo(() => {
                 {bestMatch.name}
               </h3>
 
-              <p className="text-sm text-green-100 mt-1 flex items-center gap-1">
+              <p className="text-sm text-green-100 mt-1 flex items-center gap-1 flex-wrap">
                 <MapPin className="w-3.5 h-3.5" />
                 {bestMatch.location}
                 {' • '}
-                {bestMatch.distanceKm} km away
+                {getDistance(bestMatch)}{' '}km away
+                {userCoords && bestMatch.lat && (
+                  <span className="inline-flex items-center gap-0.5 bg-white/20 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                    <Navigation className="w-2.5 h-2.5" /> GPS
+                  </span>
+                )}
               </p>
 
             </div>
@@ -1676,8 +1857,13 @@ const cities = useMemo(() => {
                           •
                         </span>
 
-                        <span className="text-xs font-bold text-[#167A42]">
-                          {store.distanceKm} km away
+                        <span className="inline-flex items-center gap-1 text-xs font-bold text-[#167A42]">
+                          {getDistance(store)}{' '}km away
+                          {userCoords && store.lat && (
+                            <span className="inline-flex items-center gap-0.5 bg-emerald-100 text-emerald-700 text-[9px] font-bold px-1.5 py-0.5 rounded-full">
+                              <Navigation className="w-2.5 h-2.5" />GPS
+                            </span>
+                          )}
                         </span>
 
                       </div>
@@ -2073,68 +2259,6 @@ const cities = useMemo(() => {
             Show All Storage Options
           </button>
 
-  const getDynamicDistance = (storeName: string, selectedCity: string, defaultDist: number) => {
-    const storeNameLower = storeName.toLowerCase();
-    const cityLower = selectedCity.toLowerCase();
-
-    if (cityLower === 'nashik') {
-      if (storeNameLower.includes('lasalgaon')) return 44.5;
-      return defaultDist;
-    }
-    if (cityLower === 'lasalgaon') {
-      if (storeNameLower.includes('lasalgaon')) return 1.8;
-      return 44.5;
-    }
-    if (cityLower === 'pune') {
-      if (storeNameLower.includes('lasalgaon')) return 235.0;
-      return 212.0;
-    }
-    if (cityLower === 'indore') {
-      if (storeNameLower.includes('lasalgaon')) return 378.0;
-      return 410.0;
-    }
-    if (cityLower === 'kolar') {
-      if (storeNameLower.includes('lasalgaon')) return 965.0;
-      return 980.0;
-    }
-    return defaultDist;
-  };
-
-  const filteredFacilities = storageFacilities.filter((s) => {
-    if (cropFilter === 'All') return true;
-    return s.suitableCrops.some((c) => c.toLowerCase().includes(cropFilter.toLowerCase()));
-  });
-
-  return (
-    <div className="flex flex-col gap-6 font-sans">
-      {/* Header & Controls */}
-      <div className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="font-heading font-extrabold text-2xl text-gray-900 tracking-tight flex items-center gap-2">
-            <Snowflake className="w-6 h-6 text-blue-600" />
-            <AutoTranslate text="Nearby Cold Storage Locator" />
-          </h2>
-          <p className="text-xs text-gray-500 font-medium mt-0.5">
-            <AutoTranslate text="Verified temperature-controlled warehouses & cold chains near" />{' '}
-            <strong><AutoTranslate text={selectedLocation.name} /></strong>.
-          </p>
-        </div>
-
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-bold text-gray-600">
-            <AutoTranslate text="Filter by Suitable Crop:" />
-          </span>
-          <select
-            value={cropFilter}
-            onChange={(e) => setCropFilter(e.target.value)}
-            className="px-3.5 py-2 rounded-xl border border-gray-200 text-xs font-semibold text-gray-800 bg-gray-50 outline-none"
-          >
-            <option value="All"><AutoTranslate text="All Crops" /></option>
-            <option value="Tomato"><AutoTranslate text="Tomato (10°C–14°C)" /></option>
-            <option value="Onion"><AutoTranslate text="Onion (0°C–4°C)" /></option>
-            <option value="Leafy Vegetables"><AutoTranslate text="Leafy Vegetables (2°C–6°C)" /></option>
-            <option value="Wheat"><AutoTranslate text="Wheat (Dry Grain)" /></option>
-          </select>
         </div>
 
       )}
@@ -2170,40 +2294,6 @@ const cities = useMemo(() => {
                     selected
                   </p>
 
-      {/* Facilities Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {filteredFacilities.map((store) => (
-          <div
-            key={store.id}
-            className="bg-white border border-gray-200 rounded-2xl p-5 shadow-sm hover:shadow-md transition-all flex flex-col justify-between gap-4"
-          >
-            <div className="flex items-start gap-4">
-              <div className="w-24 h-24 rounded-xl overflow-hidden bg-gray-50 border border-gray-100 flex-shrink-0">
-                <img src={store.image} alt={store.name} className="w-full h-full object-cover" />
-              </div>
-
-              <div className="flex-1 flex flex-col gap-1">
-                <div className="flex items-center justify-between">
-                  <span className="font-heading font-bold text-base text-gray-900">
-                    <AutoTranslate text={store.name} />
-                  </span>
-                  <span className="flex items-center gap-1 text-xs font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">
-                    <Star className="w-3.5 h-3.5 fill-amber-400" /> {store.rating}
-                  </span>
-                </div>
-
-                <span className="text-xs font-medium text-gray-500 flex items-center gap-1">
-                  <MapPin className="w-3.5 h-3.5 text-gray-400" /> <AutoTranslate text={store.location} /> (
-                  <strong>{getDynamicDistance(store.name, selectedLocation.name, store.distanceKm)} km <AutoTranslate text="away" /></strong>)
-                </span>
-
-                <div className="flex items-center gap-2 text-xs mt-1">
-                  <span className="bg-blue-50 text-blue-800 font-bold px-2 py-0.5 rounded-md">
-                    <AutoTranslate text="Temp" />: {store.tempRangeCelsius}
-                  </span>
-                  <span className="bg-gray-100 text-gray-700 font-medium px-2 py-0.5 rounded-md">
-                    <AutoTranslate text="Humidity" />: {store.humidityPercent}
-                  </span>
                 </div>
 
               </div>
@@ -2276,23 +2366,6 @@ const cities = useMemo(() => {
 
                 <Scale className="w-5 h-5 text-blue-600" />
 
-            {/* Storage Info Metrics */}
-            <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 grid grid-cols-3 gap-2 text-center text-xs">
-              <div>
-                <span className="text-gray-400 text-[10px] font-bold uppercase block">
-                  <AutoTranslate text="Total Capacity" />
-                </span>
-                <span className="font-extrabold text-gray-900 mt-0.5 block">
-                  {store.totalCapacityMT.toLocaleString()} MT
-                </span>
-              </div>
-              <div>
-                <span className="text-gray-400 text-[10px] font-bold uppercase block">
-                  <AutoTranslate text="Available Space" />
-                </span>
-                <span className="font-extrabold text-emerald-700 mt-0.5 block">
-                  {store.availableCapacityMT.toLocaleString()} MT
-                </span>
               </div>
 
               <div>
@@ -2306,12 +2379,6 @@ const cities = useMemo(() => {
                   options side-by-side.
                 </p>
 
-                <span className="text-gray-400 text-[10px] font-bold uppercase block">
-                  <AutoTranslate text="Rate / Ton / Day" />
-                </span>
-                <span className="font-heading font-extrabold text-gray-900 mt-0.5 block">
-                  ₹{store.pricePerTonPerDayRs}
-                </span>
               </div>
 
             </div>
@@ -2380,7 +2447,7 @@ const cities = useMemo(() => {
                         key={store.id}
                         className="py-3 px-3 font-bold"
                       >
-                        {store.distanceKm} km
+                        {getDistance(store)}{' '}km
                       </td>
                     )
                   )}
@@ -2571,18 +2638,6 @@ const cities = useMemo(() => {
                 }
                 className="w-full h-48 object-cover"
               />
-            {/* Suitable Crops Tags & Book Action */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pt-1">
-              <div className="flex items-center gap-1.5 flex-wrap">
-                <span className="text-[11px] font-semibold text-gray-400">
-                  <AutoTranslate text="Suitable For:" />
-                </span>
-                {store.suitableCrops.map((c, i) => (
-                  <span key={i} className="bg-green-50 text-[#167A42] font-bold text-[10.5px] px-2 py-0.5 rounded">
-                    <AutoTranslate text={c} />
-                  </span>
-                ))}
-              </div>
 
               <button
                 type="button"
@@ -2594,8 +2649,6 @@ const cities = useMemo(() => {
 
                 <X className="w-5 h-5" />
 
-                <span><AutoTranslate text="Reserve Space" /></span>
-                <ArrowRight className="w-3.5 h-3.5" />
               </button>
 
               <div className="absolute bottom-4 left-5">
@@ -2728,10 +2781,10 @@ const cities = useMemo(() => {
                   </p>
 
                   <p className="font-extrabold text-gray-900">
-                    {
-                      detailsFacility.distanceKm
-                    }{' '}
-                    km
+                    {getDistance(detailsFacility)}{' '}km
+                    {userCoords && detailsFacility.lat && (
+                      <span className="text-[10px] font-bold text-emerald-600 ml-1">(GPS)</span>
+                    )}
                   </p>
 
                 </div>
@@ -2859,8 +2912,6 @@ const cities = useMemo(() => {
 
       )}
 
-        ))}
-      </div>
     </div>
   );
 };

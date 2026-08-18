@@ -87,6 +87,7 @@ export interface FarmerLot {
   estValueRs: number;
   image: string;
   recommendation?: CropRecommendation;
+  farmerName?: string;
 }
 
 export interface StorageFacility {
@@ -95,6 +96,8 @@ export interface StorageFacility {
   type: 'Controlled Atmosphere Cold Storage' | 'Dry Grain Warehouse' | 'Multi-Commodity Cold Chain';
   location: string;
   distanceKm: number;
+  lat?: number;
+  lon?: number;
   totalCapacityMT: number;
   availableCapacityMT: number;
   tempRangeCelsius: string;

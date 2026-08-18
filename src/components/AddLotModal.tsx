@@ -5,7 +5,7 @@ import { X, PlusCircle, Sprout, Scale, Calendar, MapPin } from 'lucide-react';
 import { fetchCropImage } from '../utils/imageUtils';
 
 export const AddLotModal: React.FC = () => {
-  const { isAddLotModalOpen, setIsAddLotModalOpen, addFarmerLot, addCropRecommendation, selectedLocation } = useApp();
+  const { isAddLotModalOpen, setIsAddLotModalOpen, addFarmerLot, addCropRecommendation, selectedLocation, user } = useApp();
 
   const [cropName, setCropName] = useState('Tomato (Hybrid)');
   const [variety, setVariety] = useState('Vaishnavi Red');
@@ -14,6 +14,7 @@ export const AddLotModal: React.FC = () => {
   const [condition, setCondition] = useState<string>('Fresh');
   const [location, setLocation] = useState(`Farm Plot #12, ${selectedLocation.name}`);
   const [previewImage, setPreviewImage] = useState<string>('');
+  const [farmerName, setFarmerName] = useState('');
 
   const getCropImage = (name: string) => {
     const lowerName = name.toLowerCase();
@@ -124,6 +125,7 @@ export const AddLotModal: React.FC = () => {
       image: newImage,
       imageUrl: newImage,
       recommendation: recommendationPayload,
+      farmerName: (user.role === 'NGO/FPO' || user.role === 'Admin') ? (farmerName.trim() || 'Generic Farmer') : undefined,
     };
 
     // Save to MongoDB via our Express Backend
@@ -265,6 +267,20 @@ export const AddLotModal: React.FC = () => {
               </select>
             </div>
           </div>
+
+          {(user.role === 'NGO/FPO' || user.role === 'Admin') && (
+            <div>
+              <label className="block text-xs font-bold text-gray-700 mb-1">Farmer / Owner Name:</label>
+              <input
+                type="text"
+                value={farmerName}
+                onChange={(e) => setFarmerName(e.target.value)}
+                className="w-full text-xs font-medium border border-gray-200 rounded-xl p-2.5 bg-gray-50 focus:ring-2 focus:ring-emerald-500 outline-none"
+                required
+                placeholder="e.g. Ramesh Patil"
+              />
+            </div>
+          )}
 
           <div>
             <label className="block text-xs font-bold text-gray-700 mb-1 flex items-center gap-1">

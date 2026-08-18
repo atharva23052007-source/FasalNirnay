@@ -13,7 +13,8 @@ const lotSchema = new mongoose.Schema({
   estValueRs: { type: Number },
   image: { type: String },
   imageUrl: { type: String },
-  recommendation: { type: Object, required: true }
+  recommendation: { type: Object, required: true },
+  farmerName: { type: String }
 }, { timestamps: true });
 
 const Lot = mongoose.models.Lot || mongoose.model("Lot", lotSchema);

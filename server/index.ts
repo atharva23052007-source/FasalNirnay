@@ -31,7 +31,8 @@ let localOrders = [...mockInputPurchaseHistory];
 // --- MONGODB SETUP ---
 let isMongoConnected = false;
 
-let MONGO_URI = process.env.MONGO_URL_LOTS || process.env.MONGODB_URI || process.env.MONGO_URI || process.env.MONGO_URL || 'mongodb://127.0.0.1:27017/fasalnirnay';
+let MONGO_URI = process.env.MONGO_URL || process.env.MONGODB_URI || process.env.MONGO_URI ||
+  process.env.MONGO_URL_LOTS || 'mongodb://127.0.0.1:27017/fasalnirnay';
 if (MONGO_URI.endsWith(';')) {
   MONGO_URI = MONGO_URI.slice(0, -1);
 }
@@ -49,6 +50,7 @@ const userSchema = new mongoose.Schema({
   },
   farmSizeAcres: { type: Number, default: 4.0 },
   mainCrops: { type: [String], default: ['Tomato', 'Red Onion', 'Spinach'] },
+  gstin: { type: String, required: false },
   createdAt: { type: Date, default: Date.now },
 });
 
@@ -65,6 +67,7 @@ interface InMemoryUser {
   coordinates: { lat: number; lon: number };
   farmSizeAcres: number;
   mainCrops: string[];
+  gstin?: string;
 }
 
 const memoryUsers: Map<string, InMemoryUser> = new Map();
@@ -150,7 +153,7 @@ async function seedDatabase() {
 // POST /api/auth/signup
 app.post('/api/auth/signup', async (req: Request, res: Response): Promise<void> => {
   try {
-    const { name, identifier, password, role, location, coordinates, farmSizeAcres } = req.body;
+    const { name, identifier, password, role, location, coordinates, farmSizeAcres, gstin } = req.body;
 
     if (!name || !identifier || !password) {
       res.status(400).json({ error: 'Name, Phone/Email, and Password are required.' });
@@ -183,6 +186,7 @@ app.post('/api/auth/signup', async (req: Request, res: Response): Promise<void> 
         coordinates: userCoords,
         farmSizeAcres: userFarmSize,
         mainCrops: userRole === 'Farmer' ? ['Tomato', 'Red Onion'] : ['Operations'],
+        gstin: gstin || undefined,
       });
 
       await newUser.save();
@@ -222,6 +226,7 @@ app.post('/api/auth/signup', async (req: Request, res: Response): Promise<void> 
         coordinates: userCoords,
         farmSizeAcres: userFarmSize,
         mainCrops: userRole === 'Farmer' ? ['Tomato', 'Red Onion'] : ['Operations'],
+        gstin: gstin || undefined,
       };
       memoryUsers.set(cleanIdentifier, memUser);
 
@@ -473,162 +478,297 @@ app.get('/api/recommendations', async (req: Request, res: Response): Promise<voi
   res.json(translatedPayload);
 });
 
-    app.post('/api/orders', async (req: Request, res: Response): Promise<void> => {
-      const { channel, crop, location } = req.body;
-      if (!channel || !crop) {
-        res.status(400).json({ error: 'Channel and crop fields are required' });
-        return;
-      }
-
-      const payload = {
-        success: true,
-        orderId: `FN-${Math.floor(100000 + Math.random() * 900000)}`,
-        channel,
-        crop,
-        location: location || 'Nashik, Maharashtra',
-        status: 'DISPATCH_SCHEDULED',
-        statusText: 'Pickup dispatched within 2 hours',
-        estimatedPickup: 'Within 2 hours',
-      };
-
-      const translatedPayload = await translateResponse(payload, req.language);
-      res.status(201).json(translatedPayload);
-    });
-
-    // Explicit Text Translation Endpoint
-    app.post('/api/translate', async (req: Request, res: Response): Promise<void> => {
-      try {
-        const { text, targetLanguage } = req.body;
-        const tgt = targetLanguage || req.language || 'en';
-
-        if (!text || typeof text !== 'string') {
-          res.status(400).json({ error: 'Valid text string is required' });
-          return;
-        }
-
-        const translatedText = await translateText(text, tgt);
-        res.json({ text, targetLanguage: tgt, translatedText });
-      } catch (error: any) {
-        res.status(500).json({ error: 'Translation failed', message: error.message });
-      }
-    });
-
-    // --- NEW ENDPOINTS FOR FARMER LOTS ---
-
-    app.get('/api/lots', async (req: Request, res: Response, next: NextFunction) => {
-      try {
-        if (mongoose.connection.readyState !== 1) {
-          res.json(localLots);
-          return;
-        }
-        const lots = await Lot.find().sort({ createdAt: -1 });
-        res.json(lots);
-      } catch (err) {
-        next(err);
-      }
-    });
-
-    app.post('/api/lots', async (req: Request, res: Response, next: NextFunction) => {
-      try {
-        const lotData = req.body;
-        if (mongoose.connection.readyState !== 1) {
-          if (!lotData.id) {
-            lotData.id = `lot-${Date.now()}`;
-          }
-          localLots.unshift(lotData);
-          res.status(201).json(lotData);
-          return;
-        }
-        const newLot = new Lot(lotData);
-        await newLot.save();
-        res.status(201).json(newLot);
-      } catch (err) {
-        next(err);
-      }
-    });
-
-    app.delete('/api/lots/:id', async (req: Request, res: Response, next: NextFunction) => {
-      try {
-        const { id } = req.params;
-        if (mongoose.connection.readyState !== 1) {
-          const initialLength = localLots.length;
-          localLots = localLots.filter(l => l.id !== id);
-          if (localLots.length === initialLength) {
-            res.status(404).json({ error: 'Lot not found' });
-            return;
-          }
-          res.json({ success: true, message: 'Lot deleted successfully' });
-          return;
-        }
-        const result = await Lot.findOneAndDelete({ id });
-        if (!result) {
-          res.status(404).json({ error: 'Lot not found' });
-          return;
-        }
-        res.json({ success: true, message: 'Lot deleted successfully' });
-      } catch (err) {
-        next(err);
-      }
-    });
-
-    // --- NEW ENDPOINTS FOR PESTICIDES/INPUTS ---
-
-    app.get('/api/pesticides', async (req: Request, res: Response, next: NextFunction) => {
-      try {
-        if (mongoose.connection.readyState !== 1) {
-          res.json(mockPesticides);
-          return;
-        }
-        const products = await Pesticide.find();
-        res.json(products);
-      } catch (err) {
-        next(err);
-      }
-    });
-
-    app.get('/api/orders/history', async (req: Request, res: Response, next: NextFunction) => {
-      try {
-        if (mongoose.connection.readyState !== 1) {
-          res.json(localOrders);
-          return;
-        }
-        const orders = await InputOrder.find().sort({ createdAt: -1 });
-        res.json(orders);
-      } catch (err) {
-        next(err);
-      }
-    });
-
-    app.post('/api/orders/history', async (req: Request, res: Response, next: NextFunction) => {
-      try {
-        const orderData = req.body;
-        if (mongoose.connection.readyState !== 1) {
-          if (!orderData.id) {
-            orderData.id = `order-${Date.now()}`;
-          }
-          localOrders.unshift(orderData);
-          res.status(201).json(orderData);
-          return;
-        }
-        const newOrder = new InputOrder(orderData);
-        await newOrder.save();
-        res.status(201).json(newOrder);
-      } catch (err) {
-        next(err);
-      }
-    });
-
-    // Global Error Handler Middleware
-    app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
-      console.error('Server Error:', err.message);
-      res.status(500).json({ error: 'Internal Server Error', message: err.message });
-    });
-
-    if(process.env.NODE_ENV !== 'test') {
-    app.listen(PORT, () => {
-      console.log(`🚀 FasalNirnay Express API Server running on port ${PORT}`);
-    });
+app.post('/api/orders', async (req: Request, res: Response): Promise<void> => {
+  const { channel, crop, location } = req.body;
+  if (!channel || !crop) {
+    res.status(400).json({ error: 'Channel and crop fields are required' });
+    return;
   }
 
-  export default app;
+  const payload = {
+    success: true,
+    orderId: `FN-${Math.floor(100000 + Math.random() * 900000)}`,
+    channel,
+    crop,
+    location: location || 'Nashik, Maharashtra',
+    status: 'DISPATCH_SCHEDULED',
+    statusText: 'Pickup dispatched within 2 hours',
+    estimatedPickup: 'Within 2 hours',
+  };
+
+  const translatedPayload = await translateResponse(payload, req.language);
+  res.status(201).json(translatedPayload);
+});
+
+// =====================================================
+// POST /api/chat - Multilingual AI Assistant (Hindi/Marathi/English)
+// =====================================================
+app.post('/api/chat', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { messages, language } = req.body;
+    const lang: string = language || req.language || 'en';
+
+    if (!messages || !Array.isArray(messages)) {
+      res.status(400).json({ error: 'Messages array is required.' });
+      return;
+    }
+
+    const userMsg = messages[messages.length - 1]?.text || '';
+    const hfToken = process.env.HF_TOKEN || process.env.HF_API_TOKEN || '';
+
+    // Language-aware system prompt
+    const systemPrompts: Record<string, string> = {
+      en: `You are FasalNirnay AI, a helpful agricultural assistant for Indian farmers. Answer concisely in English about crops, APMC market prices, weather impact on crops, cold storage, Blinkit/Swiggy sales channels, and farming best practices. Keep answers short (2-4 sentences) and practical.`,
+      hi: `आप FasalNirnay AI हैं, भारतीय किसानों के लिए एक सहायक कृषि सहायक। केवल हिंदी में संक्षिप्त उत्तर दें — फसल, मंडी भाव, मौसम का असर, कोल्ड स्टोरेज, ब्लिंकिट/स्वीगी चैनल और खेती के बारे में। उत्तर 2-4 वाक्यों में दें।`,
+      mr: `तुम्ही FasalNirnay AI आहात, भारतीय शेतकऱ्यांसाठी एक उपयुक्त कृषी सहाय्यक. फक्त मराठीत उत्तर द्या — पीक, बाजार भाव, हवामान परिणाम, कोल्ड स्टोरेज, ब्लिंकिट/स्वीगी विक्री मार्ग आणि शेतीबद्दल. 2-4 वाक्यांत उत्तर द्या.`,
+    };
+
+    const systemPrompt = systemPrompts[lang] || systemPrompts['en'];
+
+    // Build conversation text for model
+    const conversationHistory = messages
+      .slice(-6) // Last 6 messages for context
+      .map((m: any) => `${m.sender === 'user' ? 'User' : 'Assistant'}: ${m.text}`)
+      .join('\n');
+
+    const fullPrompt = `${systemPrompt}\n\n${conversationHistory}\nAssistant:`;
+
+    // Try HuggingFace LLM
+    if (hfToken) {
+      try {
+        const hfModel = process.env.HF_MODEL || 'meta-llama/Llama-3.2-3B-Instruct';
+        const hfRes = await fetch(
+          `https://router.huggingface.co/hf-inference/models/${hfModel}/v1/chat/completions`,
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${hfToken}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              model: hfModel,
+              messages: [
+                { role: 'system', content: systemPrompt },
+                ...messages.slice(-5).map((m: any) => ({
+                  role: m.sender === 'user' ? 'user' : 'assistant',
+                  content: m.text,
+                })),
+              ],
+              max_tokens: 250,
+              temperature: 0.6,
+              stream: false,
+            }),
+          }
+        );
+
+        if (hfRes.ok) {
+          const data = await hfRes.json() as any;
+          const reply = data?.choices?.[0]?.message?.content?.trim();
+          if (reply) {
+            res.json({ success: true, reply, model: hfModel, language: lang });
+            return;
+          }
+        }
+      } catch (hfErr: any) {
+        console.warn('[Chat] HuggingFace API error:', hfErr.message);
+      }
+    }
+
+    // Fallback: Smart rules-based agricultural KB responses
+    const lower = userMsg.toLowerCase();
+
+    const kbResponses: Record<string, Record<string, string>> = {
+      tomato: {
+        en: '🍅 Tomato prices in Nashik APMC are currently ₹18/kg with a -2.8% trend. Arrivals are 120 MT today. Consider waiting 2 days as prices are expected to rise to ₹20.50/kg based on supply data.',
+        hi: '🍅 नासिक APMC में टमाटर का भाव ₹18/kg है, जो -2.8% नीचे है। आज 120 MT आवक हुई है। 2 दिन प्रतीक्षा करें क्योंकि भाव ₹20.50/kg तक जा सकते हैं।',
+        mr: '🍅 नाशिक APMC मध्ये टोमॅटो दर ₹18/kg आहे, -2.8% खाली आहे. आज 120 MT आवक. 2 दिवस थांबा कारण दर ₹20.50/kg पर्यंत जाण्याची शक्यता आहे.',
+      },
+      onion: {
+        en: '🧅 Onion (Red) prices at Lasalgaon APMC are ₹16.20/kg with +1.6% uptick. Today\'s arrival is 85 MT. Sell today as prices may drop tomorrow with more arrivals expected.',
+        hi: '🧅 लासलगांव APMC में प्याज ₹16.20/kg, +1.6% ऊपर। आज 85 MT आवक। आज ही बेचें क्योंकि कल कीमतें गिर सकती हैं।',
+        mr: '🧅 लासलगाव APMC मध्ये कांदा ₹16.20/kg, +1.6% वाढ. आज 85 MT आवक. आजच विका कारण उद्या दर घसरू शकतात.',
+      },
+      weather: {
+        en: '🌤️ Weather forecast for Nashik region: Partly cloudy with moderate humidity (65-70%). Good conditions for outdoor drying of onions. Tomato crops may benefit from cooler nights this week.',
+        hi: '🌤️ नासिक क्षेत्र का मौसम: आंशिक बादल, मध्यम नमी (65-70%)। प्याज सुखाने के लिए अच्छी स्थिति है। इस हफ्ते ठंडी रातें टमाटर की फसल के लिए अच्छी हैं।',
+        mr: '🌤️ नाशिक परिसर हवामान: अंशतः ढगाळ, मध्यम आर्द्रता (65-70%). कांदा वाळवण्यासाठी योग्य. या आठवड्यात थंड रात्री टोमॅटो पिकासाठी उपयुक्त.',
+      },
+      blinkit: {
+        en: '🟡 Blinkit quick commerce accepts Grade A tomatoes, leafy vegetables, and onions. Pickup happens within 2 hours of order. Price premium of 15-25% over mandi rates. Register at blinkit.com/partner.',
+        hi: '🟡 ब्लिंकिट ग्रेड A टमाटर, पालक और प्याज खरीदता है। ऑर्डर के 2 घंटे में पिकअप। मंडी से 15-25% ज्यादा भाव मिलता है। blinkit.com/partner पर रजिस्टर करें।',
+        mr: '🟡 ब्लिंकिट ग्रेड A टोमॅटो, पालेभाज्या आणि कांदा घेतो. ऑर्डरनंतर 2 तासात पिकअप. मंडी दरापेक्षा 15-25% जास्त भाव. blinkit.com/partner वर नोंदणी करा.',
+      },
+      storage: {
+        en: '🏭 Nearest cold storage: Nashik Cold Chain Hub (4.2 km) at ₹45/ton/day for tomatoes. Lasalgaon APMC Storage Vault (12.8 km) at ₹38/ton/day for onions. Use the Storage Locator tab for more options.',
+        hi: '🏭 निकटतम कोल्ड स्टोरेज: नासिक कोल्ड चेन हब (4.2 km) ₹45/टन/दिन टमाटर के लिए। लासलगांव APMC वॉल्ट (12.8 km) ₹38/टन/दिन प्याज के लिए। अधिक विकल्पों के लिए Storage Locator टैब देखें।',
+        mr: '🏭 जवळचे कोल्ड स्टोरेज: नाशिक कोल्ड चेन हब (4.2 km) ₹45/टन/दिवस टोमॅटोसाठी. लासलगाव APMC व्हॉल्ट (12.8 km) ₹38/टन/दिवस कांद्यासाठी. अधिक पर्यायांसाठी Storage Locator टॅब पहा.',
+      },
+    };
+
+    let reply = '';
+    const langKey = (lang === 'hi' || lang === 'mr') ? lang : 'en';
+
+    if (lower.includes('tomato') || lower.includes('टमाटर') || lower.includes('टोमॅटो')) {
+      reply = kbResponses.tomato[langKey];
+    } else if (lower.includes('onion') || lower.includes('प्याज') || lower.includes('कांदा')) {
+      reply = kbResponses.onion[langKey];
+    } else if (lower.includes('weather') || lower.includes('मौसम') || lower.includes('हवामान')) {
+      reply = kbResponses.weather[langKey];
+    } else if (lower.includes('blinkit') || lower.includes('ब्लिंकिट')) {
+      reply = kbResponses.blinkit[langKey];
+    } else if (lower.includes('storage') || lower.includes('cold') || lower.includes('स्टोरेज') || lower.includes('कोल्ड') || lower.includes('कोल्ड स्टोरेज')) {
+      reply = kbResponses.storage[langKey];
+    } else {
+      const defaultReplies: Record<string, string> = {
+        en: '🌾 I can help you with tomato & onion prices, weather impact, cold storage options, Blinkit/Swiggy sales, and market trends. What would you like to know?',
+        hi: '🌾 मैं टमाटर/प्याज के भाव, मौसम का असर, कोल्ड स्टोरेज, ब्लिंकिट/स्वीगी बिक्री और बाजार ट्रेंड के बारे में मदद कर सकता हूँ। आप क्या जानना चाहते हैं?',
+        mr: '🌾 मी टोमॅटो/कांदा भाव, हवामान परिणाम, कोल्ड स्टोरेज, ब्लिंकिट/स्वीगी विक्री आणि बाजार ट्रेंडबद्दल मदत करू शकतो. तुम्हाला काय जाणून घ्यायचे आहे?',
+      };
+      reply = defaultReplies[langKey] || defaultReplies['en'];
+    }
+
+    res.json({ success: true, reply, model: 'FasalNirnay-KB-v1', language: lang });
+  } catch (error: any) {
+    console.error('[Chat Error]', error.message);
+    res.status(500).json({ error: 'Chat failed', message: error.message });
+  }
+});
+
+// Explicit Text Translation Endpoint
+
+app.post('/api/translate', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { text, targetLanguage } = req.body;
+    const tgt = targetLanguage || req.language || 'en';
+
+    if (!text || typeof text !== 'string') {
+      res.status(400).json({ error: 'Valid text string is required' });
+      return;
+    }
+
+    const translatedText = await translateText(text, tgt);
+    res.json({ text, targetLanguage: tgt, translatedText });
+  } catch (error: any) {
+    res.status(500).json({ error: 'Translation failed', message: error.message });
+  }
+});
+
+// --- NEW ENDPOINTS FOR FARMER LOTS ---
+
+app.get('/api/lots', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (mongoose.connection.readyState !== 1) {
+      res.json(localLots);
+      return;
+    }
+    const lots = await Lot.find().sort({ createdAt: -1 });
+    res.json(lots);
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.post('/api/lots', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const lotData = req.body;
+    if (mongoose.connection.readyState !== 1) {
+      if (!lotData.id) {
+        lotData.id = `lot-${Date.now()}`;
+      }
+      localLots.unshift(lotData);
+      res.status(201).json(lotData);
+      return;
+    }
+    const newLot = new Lot(lotData);
+    await newLot.save();
+    res.status(201).json(newLot);
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.delete('/api/lots/:id', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const { id } = req.params;
+    if (mongoose.connection.readyState !== 1) {
+      const initialLength = localLots.length;
+      localLots = localLots.filter(l => l.id !== id);
+      if (localLots.length === initialLength) {
+        res.status(404).json({ error: 'Lot not found' });
+        return;
+      }
+      res.json({ success: true, message: 'Lot deleted successfully' });
+      return;
+    }
+    const result = await Lot.findOneAndDelete({ id });
+    if (!result) {
+      res.status(404).json({ error: 'Lot not found' });
+      return;
+    }
+    res.json({ success: true, message: 'Lot deleted successfully' });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// --- NEW ENDPOINTS FOR PESTICIDES/INPUTS ---
+
+app.get('/api/pesticides', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (mongoose.connection.readyState !== 1) {
+      res.json(mockPesticides);
+      return;
+    }
+    const products = await Pesticide.find();
+    res.json(products);
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.get('/api/orders/history', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (mongoose.connection.readyState !== 1) {
+      res.json(localOrders);
+      return;
+    }
+    const orders = await InputOrder.find().sort({ createdAt: -1 });
+    res.json(orders);
+  } catch (err) {
+    next(err);
+  }
+});
+
+app.post('/api/orders/history', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const orderData = req.body;
+    if (mongoose.connection.readyState !== 1) {
+      if (!orderData.id) {
+        orderData.id = `order-${Date.now()}`;
+      }
+      localOrders.unshift(orderData);
+      res.status(201).json(orderData);
+      return;
+    }
+    const newOrder = new InputOrder(orderData);
+    await newOrder.save();
+    res.status(201).json(newOrder);
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Global Error Handler Middleware
+app.use((err: Error, req: Request, res: Response, next: NextFunction) => {
+  console.error('Server Error:', err.message);
+  res.status(500).json({ error: 'Internal Server Error', message: err.message });
+});
+
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`🚀 FasalNirnay Express API Server running on port ${PORT}`);
+  });
+}
+
+export default app;
 

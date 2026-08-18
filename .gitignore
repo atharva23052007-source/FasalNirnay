@@ -1,3 +1,19 @@
 node_modules/
 dist/
 .env
+
+# Python virtual environments
+.venv/
+venv/
+ENV/
+env/
+
+# Python compiled bytecode
+__pycache__/
+*.pyc
+
+# ML model serializations and data downloads
+ml-backend/model/
+ml-backend/data/
+*.joblib
+*.pkl

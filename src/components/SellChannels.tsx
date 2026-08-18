@@ -20,15 +20,14 @@ export const SellChannels: React.FC = () => {
     switch (type) {
       case 'blinkit':
         return (
-          <div className="h-20 flex items-center justify-center overflow-hidden">
-            <img
-              src="https://upload.wikimedia.org/wikipedia/commons/thumb/2/2f/Blinkit-yellow-app-icon.svg/512px-Blinkit-yellow-app-icon.svg.png"
-              alt="Blinkit Quick Commerce Delivery"
-              className="h-full max-w-full object-contain drop-shadow-sm rounded-lg"
-              onError={(e) => {
-                (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1580674684081-7617fbf3d745?w=300&auto=format&fit=crop&q=80';
-              }}
-            />
+          <div className="h-20 flex items-center justify-center">
+            <div className="flex flex-col items-center gap-1.5">
+              <svg viewBox="0 0 48 48" className="w-14 h-14 drop-shadow-md" xmlns="http://www.w3.org/2000/svg">
+                <rect width="48" height="48" rx="10" fill="#FFE134"/>
+                <path d="M28 6L16 26h10l-2.5 16L42 22H30L28 6z" fill="#1A1A1A"/>
+              </svg>
+              <span className="font-black text-[13px] text-[#1A1A1A] tracking-[-0.03em] leading-none">blinkit</span>
+            </div>
           </div>
         );
       case 'swiggy':
@@ -130,8 +129,12 @@ export const SellChannels: React.FC = () => {
               {/* Header */}
               <div className="flex flex-col gap-1">
                 {channel.type === 'blinkit' ? (
-                  <div className="bg-[#ffc107] px-2 py-0.5 rounded text-black font-black text-sm w-fit tracking-tight">
-                    blinkit
+                  <div className="flex items-center gap-1.5 w-fit">
+                    <svg viewBox="0 0 48 48" className="w-7 h-7 flex-shrink-0" xmlns="http://www.w3.org/2000/svg">
+                      <rect width="48" height="48" rx="9" fill="#FFE134"/>
+                      <path d="M28 6L16 26h10l-2.5 16L42 22H30L28 6z" fill="#1A1A1A"/>
+                    </svg>
+                    <span className="font-black text-[15px] text-[#1A1A1A] tracking-[-0.03em] leading-none">blinkit</span>
                   </div>
                 ) : (
                   <span className="font-heading font-bold text-base text-gray-900">

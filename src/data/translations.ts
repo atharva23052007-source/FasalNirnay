@@ -106,6 +106,17 @@ export const translations: Record<Language, Record<string, string>> = {
     costsBreakdown: 'Costs Breakdown',
     expectedNetIncome: 'Expected Net Outcome',
     confirmAction: 'Confirm Action',
+
+    // AI Assistant
+    aiAssistantTitle: 'Ask AI Assistant',
+    aiWelcome: 'Hello! I am your FasalNirnay AI assistant. Ask me anything about crops, weather, or market prices.',
+    askAnything: 'Ask anything about your crops...',
+    aiSuggestion1: 'Tomato Prices?',
+    aiSuggestion2: 'Weather impact?',
+    aiSuggestion3: 'Best buyers?',
+    aiListening: 'Listening...',
+    aiNetworkError: 'Network error. Please try again later.',
+    aiLanguageNote: 'Responding in English',
   },
   hi: {
     // Nav
@@ -212,6 +223,17 @@ export const translations: Record<Language, Record<string, string>> = {
     costsBreakdown: 'लागत का विवरण',
     expectedNetIncome: 'अपेक्षित शुद्ध आय',
     confirmAction: 'पुष्टि करें',
+
+    // AI Assistant
+    aiAssistantTitle: 'AI सहायक से पूछें',
+    aiWelcome: 'नमस्ते! मैं आपका FasalNirnay AI सहायक हूँ। फसल, मौसम या मंडी भाव के बारे में कुछ भी पूछें।',
+    askAnything: 'अपनी फसल के बारे में कुछ भी पूछें...',
+    aiSuggestion1: 'टमाटर के भाव?',
+    aiSuggestion2: 'मौसम का असर?',
+    aiSuggestion3: 'सबसे अच्छे खरीदार?',
+    aiListening: 'सुन रहा हूँ...',
+    aiNetworkError: 'नेटवर्क त्रुटि। कृपया पुनः प्रयास करें।',
+    aiLanguageNote: 'हिंदी में जवाब दे रहा हूँ',
   },
   mr: {
     // Nav
@@ -318,5 +340,16 @@ export const translations: Record<Language, Record<string, string>> = {
     costsBreakdown: 'खर्च तपशील',
     expectedNetIncome: 'अपेक्षित निव्वळ नफा',
     confirmAction: 'शिफारस स्वीकारा',
+
+    // AI Assistant
+    aiAssistantTitle: 'AI सहाय्यकाला विचारा',
+    aiWelcome: 'नमस्कार! मी तुमचा FasalNirnay AI सहाय्यक आहे। पीक, हवामान किंवा बाजार भावाबद्दल काहीही विचारा।',
+    askAnything: 'तुमच्या पिकाबद्दल काहीही विचारा...',
+    aiSuggestion1: 'टोमॅटोचे भाव?',
+    aiSuggestion2: 'हवामानाचा परिणाम?',
+    aiSuggestion3: 'सर्वोत्तम खरेदीदार?',
+    aiListening: 'ऐकत आहे...',
+    aiNetworkError: 'नेटवर्क त्रुटी. कृपया पुन्हा प्रयत्न करा.',
+    aiLanguageNote: 'मराठीत उत्तर देत आहे',
   }
 };

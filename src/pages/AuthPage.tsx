@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useApp } from '../context/AppContext';
 import { useLanguage } from '../context/LanguageContext';
 import { UserRole, Language } from '../types';
@@ -20,6 +20,10 @@ import {
   Globe2,
   Eye,
   EyeOff,
+  FileText,
+  Upload,
+  X,
+  BadgeCheck,
 } from 'lucide-react';
 
 export const AuthPage: React.FC = () => {
@@ -44,6 +48,29 @@ export const AuthPage: React.FC = () => {
     lon: 72.8481,
   });
   const [farmSize, setFarmSize] = useState<number>(4.0);
+
+  // GSTIN fields
+  const [gstin, setGstin] = useState('');
+  const [gstinFile, setGstinFile] = useState<File | null>(null);
+  const [gstinDragOver, setGstinDragOver] = useState(false);
+  const [gstinError, setGstinError] = useState('');
+  const gstinInputRef = useRef<HTMLInputElement>(null);
+
+  const validateGSTIN = (val: string) => /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(val.toUpperCase());
+
+  const handleGstinFile = (file: File) => {
+    const allowed = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
+    if (!allowed.includes(file.type)) {
+      setGstinError('Only PDF, JPG or PNG files are allowed.');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setGstinError('File size must be under 5 MB.');
+      return;
+    }
+    setGstinError('');
+    setGstinFile(file);
+  };
 
   // Feedback & Status
   const [errorMessage, setErrorMessage] = useState('');
@@ -115,7 +142,7 @@ export const AuthPage: React.FC = () => {
 
       setSuccessMessage('Authentication successful! Welcome to FasalNirnay.');
       setTimeout(() => {
-        loginUser(data.user.emailOrPhone || data.user.mobile, data.user.name, data.user.role, data.user.token);
+        loginUser(data.user.emailOrPhone || data.user.mobile, data.user.name, data.user.role, data.user.token, coordinates);
       }, 400);
     } catch (err: any) {
       setErrorMessage('Server connection error: ' + err.message);
@@ -161,6 +188,7 @@ export const AuthPage: React.FC = () => {
           coordinates,
           farmSizeAcres: farmSize,
           preferredLanguage: language,
+          gstin,
         }),
       });
 
@@ -185,7 +213,8 @@ export const AuthPage: React.FC = () => {
           data.user.location,
           data.user.farmSizeAcres,
           data.user.role,
-          data.user.token
+          data.user.token,
+          coordinates
         );
       }, 400);
     } catch (err: any) {
@@ -520,6 +549,122 @@ export const AuthPage: React.FC = () => {
                       );
                     })}
                   </div>
+                </div>
+
+                {/* GSTIN / GST Document Upload */}
+                <div className="rounded-2xl border border-gray-200 bg-gray-50 p-4 shadow-2xs">
+                  <div className="flex items-center justify-between mb-3">
+                    <label className="flex items-center gap-1.5 text-xs font-bold text-gray-700">
+                      <BadgeCheck className="w-3.5 h-3.5 text-[#167A42]" />
+                      GSTIN / GST Registration
+                    </label>
+                    <span className="text-[9px] font-bold uppercase tracking-wider bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full border border-gray-200">Optional</span>
+                  </div>
+
+                  {/* GSTIN Number Input */}
+                  <div className="mb-3">
+                    <input
+                      type="text"
+                      maxLength={15}
+                      placeholder="e.g. 27AAPFU0939F1ZV"
+                      value={gstin}
+                      onChange={(e) => {
+                        const val = e.target.value.toUpperCase();
+                        setGstin(val);
+                        if (val.length === 15) {
+                          setGstinError(validateGSTIN(val) ? '' : 'Invalid GSTIN format. It must be 15 characters (e.g. 27AAPFU0939F1ZV).');
+                        } else {
+                          setGstinError('');
+                        }
+                      }}
+                      className={`w-full text-xs font-semibold border rounded-xl p-3 bg-white text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-[#167A42] focus:border-[#167A42] outline-none shadow-2xs transition-all font-mono tracking-widest ${
+                        gstin.length === 15
+                          ? validateGSTIN(gstin)
+                            ? 'border-emerald-400 bg-emerald-50'
+                            : 'border-red-400 bg-red-50'
+                          : 'border-gray-300'
+                      }`}
+                    />
+                    {gstin.length === 15 && validateGSTIN(gstin) && (
+                      <p className="text-[10px] text-emerald-600 font-bold mt-1 flex items-center gap-1">
+                        <CheckCircle2 className="w-3 h-3" /> Valid GSTIN format
+                      </p>
+                    )}
+                  </div>
+
+                  {/* File Upload Zone */}
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); setGstinDragOver(true); }}
+                    onDragLeave={() => setGstinDragOver(false)}
+                    onDrop={(e) => {
+                      e.preventDefault();
+                      setGstinDragOver(false);
+                      const file = e.dataTransfer.files[0];
+                      if (file) handleGstinFile(file);
+                    }}
+                    onClick={() => gstinInputRef.current?.click()}
+                    className={`relative cursor-pointer rounded-xl border-2 border-dashed transition-all px-4 py-5 flex flex-col items-center gap-2 text-center ${
+                      gstinDragOver
+                        ? 'border-[#167A42] bg-emerald-50'
+                        : gstinFile
+                          ? 'border-emerald-400 bg-emerald-50'
+                          : 'border-gray-300 bg-white hover:border-[#167A42] hover:bg-gray-100'
+                    }`}
+                  >
+                    <input
+                      ref={gstinInputRef}
+                      type="file"
+                      accept=".pdf,.jpg,.jpeg,.png"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleGstinFile(file);
+                      }}
+                    />
+
+                    {gstinFile ? (
+                      <>
+                        <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                          {gstinFile.type === 'application/pdf'
+                            ? <FileText className="w-5 h-5 text-emerald-700" />
+                            : <img src={URL.createObjectURL(gstinFile)} alt="preview" className="w-10 h-10 rounded-xl object-cover" />
+                          }
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-emerald-700 truncate max-w-[200px]">{gstinFile.name}</p>
+                          <p className="text-[10px] text-gray-500">{(gstinFile.size / 1024).toFixed(1)} KB</p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setGstinFile(null); }}
+                          className="absolute top-2 right-2 p-1 rounded-full bg-white border border-gray-200 text-gray-400 hover:text-red-500 hover:border-red-300 transition-colors shadow-sm"
+                          title="Remove file"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center transition-colors ${
+                          gstinDragOver ? 'bg-emerald-100' : 'bg-gray-100'
+                        }`}>
+                          <Upload className={`w-5 h-5 ${gstinDragOver ? 'text-[#167A42]' : 'text-gray-400'}`} />
+                        </div>
+                        <div>
+                          <p className="text-xs font-bold text-gray-700">
+                            {gstinDragOver ? 'Drop your GST certificate here' : 'Upload GST Certificate / GSTIN Document'}
+                          </p>
+                          <p className="text-[10px] text-gray-400 mt-0.5">Drag & drop or <span className="text-[#167A42] font-bold">browse file</span> · PDF, JPG or PNG · Max 5 MB</p>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {gstinError && (
+                    <p className="text-[10px] text-red-600 font-semibold mt-2 flex items-center gap-1">
+                      <AlertCircle className="w-3 h-3" /> {gstinError}
+                    </p>
+                  )}
                 </div>
 
                 {/* LocationIQ Geolocation Component with Interactive Map */}
