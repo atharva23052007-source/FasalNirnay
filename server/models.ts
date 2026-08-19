@@ -169,3 +169,70 @@ const ReportSummarySchema = new Schema<IReportSummary>({
 }, { timestamps: true });
 
 export const ReportSummary = mongoose.models.ReportSummary || mongoose.model<IReportSummary>('ReportSummary', ReportSummarySchema);
+
+// 6. StorageFacility Model Schema (with 2dsphere geo index)
+export interface IStorageFacility extends Document {
+  id: string;
+  name: string;
+  type: string;
+  location: string; // human readable address
+  distanceKm: number; // static fallback distance
+  lat: number;
+  lon: number;
+  geoLocation: {
+    type: 'Point';
+    coordinates: [number, number]; // [lon, lat]
+  };
+  totalCapacityMT: number;
+  availableCapacityMT: number;
+  tempRangeCelsius: string;
+  humidityPercent: string;
+  pricePerTonPerDayRs: number;
+  suitableCrops: string[];
+  rating: number;
+  phone: string;
+  image: string;
+  state?: string;
+  city?: string;
+  verified?: boolean;
+}
+
+const StorageFacilitySchema = new Schema<IStorageFacility>({
+  id: { type: String, required: true, unique: true },
+  name: { type: String, required: true },
+  type: { type: String, required: true },
+  location: { type: String, required: true },
+  distanceKm: { type: Number, default: 0 },
+  lat: { type: Number, required: true },
+  lon: { type: Number, required: true },
+  geoLocation: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      required: true,
+      default: 'Point',
+    },
+    coordinates: {
+      type: [Number], // [longitude, latitude]
+      required: true,
+    },
+  },
+  totalCapacityMT: { type: Number, required: true },
+  availableCapacityMT: { type: Number, required: true },
+  tempRangeCelsius: { type: String, required: true },
+  humidityPercent: { type: String, required: true },
+  pricePerTonPerDayRs: { type: Number, required: true },
+  suitableCrops: [{ type: String }],
+  rating: { type: Number, required: true },
+  phone: { type: String, required: true },
+  image: { type: String, required: true },
+  state: { type: String },
+  city: { type: String },
+  verified: { type: Boolean, default: false },
+}, { timestamps: true });
+
+// Create 2dsphere index for $near / $geoNear queries
+StorageFacilitySchema.index({ geoLocation: '2dsphere' });
+
+export const StorageFacility = mongoose.models.StorageFacility ||
+  mongoose.model<IStorageFacility>('StorageFacility', StorageFacilitySchema);

@@ -83,11 +83,14 @@ export const Navbar: React.FC = () => {
             <select
               value={selectedLocation.id}
               onChange={(e) => {
-                const loc = mockLocations.find(l => l.id === e.target.value);
+                const loc = [...(selectedLocation.id === 'live' ? [selectedLocation] : []), ...mockLocations].find(l => l.id === e.target.value);
                 if (loc) setSelectedLocation(loc);
               }}
-              className="h-full appearance-none pl-8 pr-8 rounded-full border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#167A42]/20 transition-all shadow-sm leading-none max-w-[120px] xl:max-w-none truncate"
+              className="h-full appearance-none pl-8 pr-8 rounded-full border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#167A42]/20 transition-all shadow-sm leading-none max-w-[140px] xl:max-w-none truncate"
             >
+              {selectedLocation.id === 'live' && (
+                <option value="live">📍 {selectedLocation.name}, {selectedLocation.state}</option>
+              )}
               {mockLocations.map(loc => (
                 <option key={loc.id} value={loc.id}>
                   {loc.name}, {loc.state}

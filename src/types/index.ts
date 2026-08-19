@@ -4,6 +4,7 @@ export interface LocationOption {
   id: string;
   name: string;
   state: string;
+  coordinates?: { lat: number; lon: number };
 }
 
 export interface CropRecommendation {
@@ -93,7 +94,7 @@ export interface FarmerLot {
 export interface StorageFacility {
   id: string;
   name: string;
-  type: 'Controlled Atmosphere Cold Storage' | 'Dry Grain Warehouse' | 'Multi-Commodity Cold Chain';
+  type: 'Controlled Atmosphere Cold Storage' | 'Dry Grain Warehouse' | 'Multi-Commodity Cold Chain' | 'Pre-Cooling & Cold Storage Unit';
   location: string;
   distanceKm: number;
   lat?: number;
@@ -107,6 +108,9 @@ export interface StorageFacility {
   rating: number;
   phone: string;
   image: string;
+  city?: string;
+  state?: string;
+  verified?: boolean;
 }
 
 export interface MarketPriceDetail {
