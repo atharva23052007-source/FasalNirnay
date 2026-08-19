@@ -43,10 +43,10 @@ const userSchema = new mongoose.Schema({
   identifier: { type: String, required: true, unique: true }, // Email or Mobile
   password: { type: String, required: true },
   role: { type: String, enum: ['Farmer', 'Admin', 'NGO/FPO'], default: 'Farmer' },
-  location: { type: String, default: 'Nashik, Maharashtra' },
+  location: { type: String, default: '' },
   coordinates: {
-    lat: { type: Number, default: 20.0003 },
-    lon: { type: Number, default: 73.7898 },
+    lat: { type: Number },
+    lon: { type: Number },
   },
   farmSizeAcres: { type: Number, default: 4.0 },
   mainCrops: { type: [String], default: ['Tomato', 'Red Onion', 'Spinach'] },
@@ -83,8 +83,8 @@ const memoryUsers: Map<string, InMemoryUser> = new Map();
     identifier: '9822012345',
     passwordHash: hash,
     role: 'Farmer',
-    location: 'Nashik, Maharashtra',
-    coordinates: { lat: 20.0003, lon: 73.7898 },
+    location: '',
+    coordinates: { lat: 0, lon: 0 },
     farmSizeAcres: 4.5,
     mainCrops: ['Tomato', 'Red Onion', 'Spinach'],
   });
@@ -95,14 +95,17 @@ const memoryUsers: Map<string, InMemoryUser> = new Map();
     identifier: 'ramesh@farmer.com',
     passwordHash: hash,
     role: 'Farmer',
-    location: 'Nashik, Maharashtra',
-    coordinates: { lat: 20.0003, lon: 73.7898 },
+    location: '',
+    coordinates: { lat: 0, lon: 0 },
     farmSizeAcres: 4.0,
     mainCrops: ['Tomato', 'Onion'],
   });
 })();
 
+import dns from 'dns';
+
 // Initialize MongoDB Connection
+dns.setServers(['8.8.8.8', '8.8.4.4']); // Bypass restrictive local DNS for MongoDB Atlas SRV lookup
 mongoose.set('strictQuery', false);
 console.log(`Connecting to MongoDB...`);
 mongoose.connect(MONGO_URI, {
@@ -171,45 +174,52 @@ app.post('/api/auth/signup', async (req: Request, res: Response): Promise<void> 
     const passwordHash = await bcrypt.hash(password, salt);
 
     if (isMongoConnected) {
-      const existing = await User.findOne({ identifier: cleanIdentifier });
-      if (existing) {
-        res.status(400).json({ error: 'An account with this Phone/Email already exists. Please Log In.' });
+      try {
+        const existing = await User.findOne({ identifier: cleanIdentifier });
+        if (existing) {
+          res.status(400).json({ error: 'An account with this Phone/Email already exists. Please Log In.' });
+          return;
+        }
+
+        const newUser = new User({
+          name,
+          identifier: cleanIdentifier,
+          password: passwordHash,
+          role: userRole,
+          location: userLocation,
+          coordinates: userCoords,
+          farmSizeAcres: userFarmSize,
+          mainCrops: userRole === 'Farmer' ? ['Tomato', 'Red Onion'] : ['Operations'],
+          gstin: gstin || undefined,
+        });
+
+        await newUser.save();
+
+        const userRes = {
+          id: newUser._id.toString(),
+          name: newUser.name,
+          mobile: newUser.identifier,
+          emailOrPhone: newUser.identifier,
+          role: newUser.role,
+          location: newUser.location,
+          coordinates: newUser.coordinates,
+          farmSizeAcres: newUser.farmSizeAcres,
+          mainCrops: newUser.mainCrops,
+          isLoggedIn: true,
+          avatarUrl: '/assets/farmer_banner.jpg',
+          token: `fn_token_${newUser._id}_${Date.now()}`,
+        };
+
+        res.status(201).json({ success: true, user: userRes });
         return;
+      } catch (dbErr: any) {
+        console.warn('MongoDB query failed during signup, falling back to memory store:', dbErr.message);
+        isMongoConnected = false;
       }
+    }
+    
+    // In-Memory Store
 
-      const newUser = new User({
-        name,
-        identifier: cleanIdentifier,
-        password: passwordHash,
-        role: userRole,
-        location: userLocation,
-        coordinates: userCoords,
-        farmSizeAcres: userFarmSize,
-        mainCrops: userRole === 'Farmer' ? ['Tomato', 'Red Onion'] : ['Operations'],
-        gstin: gstin || undefined,
-      });
-
-      await newUser.save();
-
-      const userRes = {
-        id: newUser._id.toString(),
-        name: newUser.name,
-        mobile: newUser.identifier,
-        emailOrPhone: newUser.identifier,
-        role: newUser.role,
-        location: newUser.location,
-        coordinates: newUser.coordinates,
-        farmSizeAcres: newUser.farmSizeAcres,
-        mainCrops: newUser.mainCrops,
-        isLoggedIn: true,
-        avatarUrl: '/assets/farmer_banner.jpg',
-        token: `fn_token_${newUser._id}_${Date.now()}`,
-      };
-
-      res.status(201).json({ success: true, user: userRes });
-      return;
-    } else {
-      // In-Memory Store
       if (memoryUsers.has(cleanIdentifier)) {
         res.status(400).json({ error: 'An account with this Phone/Email already exists. Please Log In.' });
         return;
@@ -247,7 +257,6 @@ app.post('/api/auth/signup', async (req: Request, res: Response): Promise<void> 
 
       res.status(201).json({ success: true, user: userRes });
       return;
-    }
   } catch (error: any) {
     console.error('Signup Error:', error);
     res.status(500).json({ error: 'Server signup failed: ' + error.message });
@@ -267,74 +276,93 @@ app.post('/api/auth/login', async (req: Request, res: Response): Promise<void> =
     const cleanIdentifier = identifier.toString().trim().toLowerCase();
 
     if (isMongoConnected) {
-      const user = await User.findOne({ identifier: cleanIdentifier });
-      if (!user) {
-        res.status(401).json({ error: 'Account not found with this Phone/Email. Please Sign Up first.' });
+      try {
+        const user = await User.findOne({ identifier: cleanIdentifier });
+        if (!user) {
+          res.status(401).json({ error: 'Account not found with this Phone/Email. Please Sign Up first.' });
+          return;
+        }
+
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+          res.status(401).json({ error: 'Incorrect password. Please verify your password.' });
+          return;
+        }
+
+        let updated = false;
+        if (role && user.role !== role) {
+          user.role = role;
+          updated = true;
+        }
+        if (req.body.location && req.body.coordinates) {
+          user.location = req.body.location;
+          user.coordinates = req.body.coordinates;
+          updated = true;
+        }
+        if (updated) {
+          await user.save();
+        }
+
+        const userRes = {
+          id: user._id.toString(),
+          name: user.name,
+          mobile: user.identifier,
+          emailOrPhone: user.identifier,
+          role: user.role,
+          location: user.location,
+          coordinates: user.coordinates,
+          farmSizeAcres: user.farmSizeAcres,
+          mainCrops: user.mainCrops,
+          isLoggedIn: true,
+          avatarUrl: '/assets/farmer_banner.jpg',
+          token: `fn_token_${user._id}_${Date.now()}`,
+        };
+
+        res.json({ success: true, user: userRes });
         return;
+      } catch (dbErr: any) {
+        console.warn('MongoDB query failed during login, falling back to memory store:', dbErr.message);
+        isMongoConnected = false;
       }
-
-      const isMatch = await bcrypt.compare(password, user.password);
-      if (!isMatch) {
-        res.status(401).json({ error: 'Incorrect password. Please verify your password.' });
-        return;
-      }
-
-      if (role && user.role !== role) {
-        user.role = role;
-        await user.save();
-      }
-
-      const userRes = {
-        id: user._id.toString(),
-        name: user.name,
-        mobile: user.identifier,
-        emailOrPhone: user.identifier,
-        role: user.role,
-        location: user.location,
-        coordinates: user.coordinates,
-        farmSizeAcres: user.farmSizeAcres,
-        mainCrops: user.mainCrops,
-        isLoggedIn: true,
-        avatarUrl: '/assets/farmer_banner.jpg',
-        token: `fn_token_${user._id}_${Date.now()}`,
-      };
-
-      res.json({ success: true, user: userRes });
-      return;
-    } else {
-      // In-Memory Authentication Lookup
-      const memUser = memoryUsers.get(cleanIdentifier);
-      if (!memUser) {
-        res.status(401).json({ error: 'Account not found with this Phone/Email. Please Sign Up first.' });
-        return;
-      }
-
-      const isMatch = await bcrypt.compare(password, memUser.passwordHash);
-      if (!isMatch) {
-        res.status(401).json({ error: 'Incorrect password. Please verify your password.' });
-        return;
-      }
-
-      if (role) memUser.role = role;
-
-      const userRes = {
-        id: memUser.id,
-        name: memUser.name,
-        mobile: memUser.identifier,
-        emailOrPhone: memUser.identifier,
-        role: memUser.role,
-        location: memUser.location,
-        coordinates: memUser.coordinates,
-        farmSizeAcres: memUser.farmSizeAcres,
-        mainCrops: memUser.mainCrops,
-        isLoggedIn: true,
-        avatarUrl: '/assets/farmer_banner.jpg',
-        token: `fn_token_${memUser.id}_${Date.now()}`,
-      };
-
-      res.json({ success: true, user: userRes });
-      return;
     }
+    
+    // In-Memory Authentication Lookup
+      const memUser = memoryUsers.get(cleanIdentifier);
+      if (memUser) {
+        const isMatch = await bcrypt.compare(password, memUser.passwordHash);
+        if (isMatch) {
+          if (role && memUser.role !== role) {
+            memUser.role = role;
+          }
+          if (req.body.location && req.body.coordinates) {
+            memUser.location = req.body.location;
+            memUser.coordinates = req.body.coordinates;
+          }
+          const userRes = {
+            id: memUser.id,
+            name: memUser.name,
+            mobile: memUser.identifier,
+            emailOrPhone: memUser.identifier,
+            role: memUser.role,
+            location: memUser.location,
+            coordinates: memUser.coordinates,
+            farmSizeAcres: memUser.farmSizeAcres,
+            mainCrops: memUser.mainCrops,
+            isLoggedIn: true,
+            avatarUrl: '/assets/farmer_banner.jpg',
+            token: `fn_token_${memUser.id}_${Date.now()}`,
+          };
+          res.json({ success: true, user: userRes });
+          return;
+        } else {
+          res.status(401).json({ error: 'Incorrect password. Please verify your password.' });
+          return;
+        }
+      } else {
+        res.status(401).json({ error: 'Account not found with this Phone/Email. Please Sign Up first.' });
+        return;
+      }
+
   } catch (error: any) {
     console.error('Login Error:', error);
     res.status(500).json({ error: 'Server login failed: ' + error.message });
@@ -362,18 +390,145 @@ app.get('/api/health', (req: Request, res: Response) => {
   });
 });
 
-app.get('/api/market-prices', async (req: Request, res: Response): Promise<void> => {
-  const payload = {
-    mandi: 'Nashik APMC',
-    timestamp: new Date().toISOString(),
-    prices: [
-      { crop: 'Tomato', modalPriceKg: 18.0, changePercent: -2.8, arrivalMT: 120 },
-      { crop: 'Onion', modalPriceKg: 16.2, changePercent: 1.6, arrivalMT: 85 },
-    ],
-  };
+// --- Caching and Utils ---
+const apiCache = new Map<string, { data: any; timestamp: number }>();
+const mandiGeocodeCache = new Map<string, { lat: number; lon: number }>();
+const CACHE_TTL = 30 * 60 * 1000; // 30 minutes
 
-  const translatedPayload = await translateResponse(payload, req.language);
-  res.json(translatedPayload);
+const haversineDistance = (lat1: number, lon1: number, lat2: number, lon2: number) => {
+  const toRad = (x: number) => (x * Math.PI) / 180;
+  const R = 6371; // km
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return R * c;
+};
+
+const getMandiCoordinates = async (mandiName: string, state: string) => {
+  const cacheKey = `${mandiName}_${state}`;
+  if (mandiGeocodeCache.has(cacheKey)) {
+    return mandiGeocodeCache.get(cacheKey);
+  }
+  try {
+    const query = encodeURIComponent(`${mandiName.replace(/APMC/i, '').trim()}, ${state}, India`);
+    const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${query}&limit=1`);
+    if (res.ok) {
+      const data = await res.json() as any[];
+      if (data && data.length > 0) {
+        const coords = { lat: parseFloat(data[0].lat), lon: parseFloat(data[0].lon) };
+        mandiGeocodeCache.set(cacheKey, coords);
+        return coords;
+      }
+    }
+  } catch (err) {
+    console.warn(`Geocoding failed for ${mandiName}:`, err);
+  }
+  return null;
+};
+// -------------------------
+
+app.get('/api/market-prices', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const lat = req.query.lat ? parseFloat(req.query.lat as string) : null;
+    const lon = req.query.lon ? parseFloat(req.query.lon as string) : null;
+    
+    if (!lat || !lon) {
+      res.json([]);
+      return;
+    }
+    
+    let state = '';
+    let district = '';
+
+    try {
+      const nomRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+      if (nomRes.ok) {
+        const nomData = await nomRes.json() as any;
+        if (nomData?.address) {
+          state = nomData.address.state || state;
+          district = nomData.address.state_district || nomData.address.county || nomData.address.district || nomData.address.city || district;
+        }
+      }
+    } catch (err) {
+      console.warn('Reverse geocoding failed:', err);
+    }
+
+    district = district.replace(/ District/i, '').trim();
+    const apiKey = process.env.DATA_GOV_API_KEY;
+    let pricesArray: any[] = [];
+    
+    if (apiKey) {
+      const cacheKey = `market-prices-${state}-${district}`;
+      const cached = apiCache.get(cacheKey);
+      
+      let agmarknetData: any = { records: [] };
+      
+      if (cached && (Date.now() - cached.timestamp < CACHE_TTL)) {
+        agmarknetData = cached.data;
+      } else {
+        let apiUrl = `https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=${apiKey}&format=json&limit=50&filters[state]=${encodeURIComponent(state)}`;
+        if (district) apiUrl += `&filters[district]=${encodeURIComponent(district)}`;
+        
+        try {
+          const agRes = await fetch(apiUrl);
+          if (agRes.ok) agmarknetData = await agRes.json();
+        } catch (err) {
+          console.warn('AGMARKNET API failed:', err);
+        }
+        
+        if (agmarknetData?.records?.length === 0 && district) {
+           try {
+             const fallbackUrl = `https://api.data.gov.in/resource/9ef84268-d588-465a-a308-a864a43d0070?api-key=${apiKey}&format=json&limit=50&filters[state]=${encodeURIComponent(state)}`;
+             const agFallbackRes = await fetch(fallbackUrl);
+             if (agFallbackRes.ok) agmarknetData = await agFallbackRes.json();
+           } catch (err) {
+             console.warn('AGMARKNET Fallback API failed:', err);
+           }
+        }
+        
+        if (agmarknetData?.records?.length > 0) {
+          apiCache.set(cacheKey, { data: agmarknetData, timestamp: Date.now() });
+        }
+      }
+
+      if (agmarknetData?.records?.length > 0) {
+        const mappedPromises = agmarknetData.records.map(async (r: any, idx: number) => {
+          let distanceKm = null;
+          if (lat && lon) {
+             const mandiCoords = await getMandiCoordinates(r.market, r.state);
+             if (mandiCoords) {
+                distanceKm = haversineDistance(lat, lon, mandiCoords.lat, mandiCoords.lon);
+             }
+          }
+          
+          return {
+            id: `mp-${idx}-${Date.now()}`,
+            crop: r.commodity,
+            mandi: r.market,
+            state: r.state,
+            minPrice: r.min_price ? Number(r.min_price) / 100 : 0,
+            maxPrice: r.max_price ? Number(r.max_price) / 100 : 0,
+            modalPrice: r.modal_price ? Number(r.modal_price) / 100 : 0,
+            arrivalQtyMT: 0,
+            priceChangePercent: 0,
+            lastUpdated: r.arrival_date,
+            distanceKm: distanceKm ? Math.round(distanceKm * 10) / 10 : null
+          };
+        });
+        
+        pricesArray = await Promise.all(mappedPromises);
+      }
+    }
+
+    const translatedPayload = await translateResponse(pricesArray, req.language);
+    res.json(translatedPayload);
+  } catch (error: any) {
+    console.error('Market prices error:', error);
+    res.status(500).json({ error: error.message });
+  }
 });
 
 app.post('/api/send-sms', async (req: Request, res: Response) => {

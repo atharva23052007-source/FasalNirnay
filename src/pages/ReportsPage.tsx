@@ -9,7 +9,7 @@ export const ReportsPage: React.FC = () => {
   const { language, t } = useLanguage();
 
   useEffect(() => {
-    fetch('http://localhost:5000/api/reports/summary')
+    fetch('/api/reports/summary')
       .then((res) => {
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         return res.json();

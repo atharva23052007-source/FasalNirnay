@@ -8,7 +8,7 @@ export const fetchCropImage = async (query: string): Promise<string | null> => {
   }
 
   try {
-    const response = await fetch(`http://localhost:5000/api/images?q=${encodeURIComponent(normalizedQuery)}`);
+    const response = await fetch(`/api/images?q=${encodeURIComponent(normalizedQuery)}`);
     if (!response.ok) {
       console.warn(`Failed to fetch image for ${query}`);
       return null;

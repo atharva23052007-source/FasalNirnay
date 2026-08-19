@@ -27,7 +27,7 @@ export const ProfileAuthModal: React.FC = () => {
   // Signup States
   const [signupName, setSignupName] = useState('');
   const [signupMobile, setSignupMobile] = useState('');
-  const [signupLocation, setSignupLocation] = useState('Nashik, Maharashtra');
+  const [signupLocation, setSignupLocation] = useState('');
   const [signupFarmSize, setSignupFarmSize] = useState<number>(4.0);
   const [signupPassword, setSignupPassword] = useState('');
 
@@ -61,7 +61,7 @@ export const ProfileAuthModal: React.FC = () => {
     return cleaned.length === 10;
   };
 
-  const handleLoginSubmit = (e: React.FormEvent) => {
+  const handleLoginSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
     setSuccessMessage('');
@@ -88,11 +88,34 @@ export const ProfileAuthModal: React.FC = () => {
       }
     }
 
-    loginUser(mobile, 'Ramesh Patil');
-    setSuccessMessage('Logged in successfully!');
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ identifier: mobile, password }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setErrorMessage(data.error || 'Login failed.');
+        return;
+      }
+      setSuccessMessage('Logged in successfully!');
+      setTimeout(() => {
+        loginUser(
+          data.user.emailOrPhone || data.user.mobile,
+          data.user.name,
+          data.user.role,
+          data.user.token,
+          data.user.coordinates,
+          data.user.location
+        );
+      }, 400);
+    } catch (err: any) {
+      setErrorMessage('Server error: ' + err.message);
+    }
   };
 
-  const handleSignupSubmit = (e: React.FormEvent) => {
+  const handleSignupSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage('');
     setSuccessMessage('');
@@ -110,8 +133,38 @@ export const ProfileAuthModal: React.FC = () => {
       return;
     }
 
-    signupUser(signupName, signupMobile, signupLocation, signupFarmSize);
-    setSuccessMessage('Account created successfully! Welcome to FasalNirnay.');
+    try {
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: signupName,
+          identifier: signupMobile,
+          password: signupPassword,
+          location: signupLocation,
+          farmSizeAcres: signupFarmSize,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        setErrorMessage(data.error || 'Registration failed.');
+        return;
+      }
+      setSuccessMessage('Account created successfully! Welcome to FasalNirnay.');
+      setTimeout(() => {
+        signupUser(
+          data.user.name,
+          data.user.mobile,
+          data.user.location,
+          data.user.farmSizeAcres,
+          data.user.role,
+          data.user.token,
+          data.user.coordinates
+        );
+      }, 400);
+    } catch (err: any) {
+      setErrorMessage('Server error: ' + err.message);
+    }
   };
 
   const handleForgotSubmit = (e: React.FormEvent) => {
