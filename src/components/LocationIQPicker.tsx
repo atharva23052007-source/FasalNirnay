@@ -41,8 +41,8 @@ export const LocationIQPicker: React.FC<LocationIQPickerProps> = ({
 }) => {
   const [query, setQuery] = useState(value || '');
   const [coords, setCoords] = useState<{ lat: number; lon: number }>({
-    lat: 19.4276,
-    lon: 72.8481,
+    lat: 20.5937,  // India center fallback
+    lon: 78.9629,
   });
   const [suggestions, setSuggestions] = useState<LocationResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -184,6 +184,25 @@ export const LocationIQPicker: React.FC<LocationIQPickerProps> = ({
 
       mapInstanceRef.current = map;
       markerInstanceRef.current = marker;
+
+      // Auto-center map on user's real GPS location on init
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          async (position) => {
+            const { latitude, longitude } = position.coords;
+            // Guard: check map is still mounted before touching it
+            if (!mapInstanceRef.current || !markerInstanceRef.current) return;
+            setCoords({ lat: latitude, lon: longitude });
+            markerInstanceRef.current.setLatLng([latitude, longitude]);
+            mapInstanceRef.current.setView([latitude, longitude], 14);
+            await reverseGeocode(latitude, longitude);
+          },
+          () => {
+            // GPS denied or unavailable — keep the coords passed via props
+          },
+          { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 }
+        );
+      }
     }
 
     return () => {

@@ -33,26 +33,22 @@ export const StorageLocatorPage: React.FC = () => {
     storageFacilities,
     setSelectedStorageFacility,
     selectedLocation,
+    setSelectedLocation,
     user,
+    userCoords,
+    setUserCoords,
   } = useApp();
 
   // =========================================================
   // GPS / LOCATION STATE
   // =========================================================
 
-  const [userCoords, setUserCoords] = useState<{ lat: number; lon: number } | null>(
-    // Initialize from user profile if available (stored at login/signup)
-    user.coordinates ?? null
-  );
+  // userCoords comes from AppContext (shared, triggers storage re-fetch)
   const [userLocationLabel, setUserLocationLabel] = useState<string>(
-    user.coordinates ? user.location : selectedLocation.name + ', ' + selectedLocation.state
+    userCoords ? user.location : selectedLocation.name + ', ' + selectedLocation.state
   );
   const [isGpsLoading, setIsGpsLoading] = useState(false);
   const [gpsError, setGpsError] = useState('');
-
-  const LOCATIONIQ_TOKEN =
-    ((import.meta as any).env && (import.meta as any).env.VITE_LOCATIONIQ_TOKEN) ||
-    'pk.87f2b6b039413f1737e408d6694602f3';
 
   // =========================================================
   // HAVERSINE FORMULA — real GPS distance in km
@@ -75,13 +71,18 @@ export const StorageLocatorPage: React.FC = () => {
     []
   );
 
-  // Get the effective distance: GPS Haversine if coords available, else legacy fallback
+  // Get the effective distance: gpsDistanceKm from API first, then GPS Haversine, then legacy fallback
   const getDistance = useCallback(
-    (store: { lat?: number; lon?: number; name: string; distanceKm: number }): number => {
+    (store: { lat?: number; lon?: number; name: string; distanceKm: number; gpsDistanceKm?: number }): number => {
+      // 1. Best: server-computed MongoDB $geoNear distance
+      if (store.gpsDistanceKm !== undefined) {
+        return store.gpsDistanceKm;
+      }
+      // 2. Client-side Haversine if coords available
       if (userCoords && store.lat !== undefined && store.lon !== undefined) {
         return haversineDistance(userCoords.lat, userCoords.lon, store.lat, store.lon);
       }
-      // Legacy text-based fallback
+      // 3. Legacy text-based fallback
       const storeNameLower = store.name.toLowerCase();
       const cityLower = selectedLocation.name.toLowerCase();
       if (cityLower === 'nashik') {
@@ -109,67 +110,87 @@ export const StorageLocatorPage: React.FC = () => {
     [userCoords, selectedLocation.name, haversineDistance]
   );
 
-  // Reverse geocode coordinates -> human label
-  const reverseGeocode = useCallback(async (lat: number, lon: number) => {
+  // Reverse geocode coordinates → human label (Nominatim only — free, no key)
+  const reverseGeocode = useCallback(async (lat: number, lon: number): Promise<string> => {
     try {
       const res = await fetch(
-        `https://us1.locationiq.com/v1/reverse?key=${LOCATIONIQ_TOKEN}&lat=${lat}&lon=${lon}&format=json`
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=en`
       );
       if (res.ok) {
-        const data = await res.json();
-        const a = data.address || {};
+        const d = await res.json();
+        const a = d.address || {};
         const place = a.village || a.suburb || a.town || a.city || a.municipality || '';
         const district = a.county || a.state_district || '';
         const state = a.state || '';
         const parts = [place, district, state].filter(Boolean);
-        return parts.length > 0 ? parts.join(', ') : data.display_name?.split(', ').slice(0, 3).join(', ') || '';
-      }
-    } catch {}
-    // Nominatim fallback
-    try {
-      const res2 = await fetch(
-        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`
-      );
-      if (res2.ok) {
-        const d = await res2.json();
-        const a = d.address || {};
-        const place = a.village || a.suburb || a.town || a.city || '';
-        const state = a.state || '';
-        return [place, state].filter(Boolean).join(', ') || d.display_name?.split(', ').slice(0, 3).join(', ');
+        return parts.length > 0 ? parts.join(', ') : d.display_name?.split(', ').slice(0, 3).join(', ') || `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
       }
     } catch {}
     return `${lat.toFixed(4)}, ${lon.toFixed(4)}`;
-  }, [LOCATIONIQ_TOKEN]);
+  }, []);
 
-  // Detect live GPS and reverse geocode
+  // ================================================================
+  // DETECT LIVE GPS — only called when user clicks the button
+  // Uses enableHighAccuracy:true to request real hardware GPS
+  // NO automatic fallback to any city if GPS fails
+  // ================================================================
   const detectLiveGPS = useCallback(() => {
     setGpsError('');
     if (!navigator.geolocation) {
-      setGpsError('Geolocation not supported by your browser.');
+      setGpsError('Your browser does not support GPS. Please use a modern browser.');
       return;
     }
     setIsGpsLoading(true);
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         const { latitude: lat, longitude: lon } = pos.coords;
+
+        // Set shared GPS coords in AppContext — triggers storage API re-fetch
         setUserCoords({ lat, lon });
+
+        // Reverse geocode to human label
         const label = await reverseGeocode(lat, lon);
         setUserLocationLabel(label);
-        setIsGpsLoading(false);
-      },
-      () => {
-        setGpsError('Location permission denied. Using profile location.');
-        setIsGpsLoading(false);
-      },
-      { timeout: 10000, enableHighAccuracy: true }
-    );
-  }, [reverseGeocode]);
 
-  // Auto-detect GPS on mount if no coords stored
+        // Also update the global selectedLocation so navbar shows detected city
+        const parts = label.split(', ');
+        const name = parts[0] || 'My Location';
+        const state = parts[parts.length - 1] || '';
+        setSelectedLocation({
+          id: 'live',
+          name,
+          state,
+          coordinates: { lat, lon },
+        });
+
+        setIsGpsLoading(false);
+      },
+      (err) => {
+        setIsGpsLoading(false);
+        // Show a clear, actionable error — no silent fallback to any hardcoded city
+        if (err.code === 1 /* PERMISSION_DENIED */) {
+          setGpsError('⚠️ Location access denied. Please enable location permissions in your browser settings and try again.');
+        } else if (err.code === 2 /* POSITION_UNAVAILABLE */) {
+          setGpsError('⚠️ GPS signal unavailable. Make sure location services are enabled on your device.');
+        } else if (err.code === 3 /* TIMEOUT */) {
+          setGpsError('⚠️ GPS timed out. Move to an open area for better signal and try again.');
+        } else {
+          setGpsError('⚠️ Could not detect GPS location. Please enable location permissions and try again.');
+        }
+      },
+      {
+        enableHighAccuracy: true, // request real GPS hardware, not IP/WiFi approximation
+        timeout: 15000,           // 15 seconds for hardware GPS to lock
+        maximumAge: 0,            // always get fresh position, never cached
+      }
+    );
+  }, [reverseGeocode, setUserCoords, setSelectedLocation]);
+
+  // Auto-detect GPS when page opens — fires immediately so user sees real location
+  // "Detect GPS" button re-runs this on demand
   useEffect(() => {
-    if (!userCoords) {
-      detectLiveGPS();
-    }
+    detectLiveGPS();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // =========================================================
@@ -229,330 +250,39 @@ export const StorageLocatorPage: React.FC = () => {
     storageFacilities as ExtendedStorageFacility[];
 
 // =========================================================
-// STATES — ALL 28 INDIAN STATES
-// =========================================================
-
-const indianStates = [
-  'Andhra Pradesh',
-  'Arunachal Pradesh',
-  'Assam',
-  'Bihar',
-  'Chhattisgarh',
-  'Goa',
-  'Gujarat',
-  'Haryana',
-  'Himachal Pradesh',
-  'Jharkhand',
-  'Karnataka',
-  'Kerala',
-  'Madhya Pradesh',
-  'Maharashtra',
-  'Manipur',
-  'Meghalaya',
-  'Mizoram',
-  'Nagaland',
-  'Odisha',
-  'Punjab',
-  'Rajasthan',
-  'Sikkim',
-  'Tamil Nadu',
-  'Telangana',
-  'Tripura',
-  'Uttar Pradesh',
-  'Uttarakhand',
-  'West Bengal',
-];
-
-// =========================================================
-// CITIES — CITY LIST FOR EACH STATE
-// =========================================================
-
-const citiesByState: Record<string, string[]> = {
-  'Andhra Pradesh': [
-    'Amaravati',
-    'Visakhapatnam',
-    'Vijayawada',
-    'Guntur',
-    'Tirupati',
-    'Nellore',
-    'Kurnool',
-  ],
-
-  'Arunachal Pradesh': [
-    'Itanagar',
-    'Naharlagun',
-    'Tawang',
-    'Pasighat',
-    'Bomdila',
-  ],
-
-  'Assam': [
-    'Guwahati',
-    'Dibrugarh',
-    'Silchar',
-    'Jorhat',
-    'Tezpur',
-    'Nagaon',
-  ],
-
-  'Bihar': [
-    'Patna',
-    'Gaya',
-    'Muzaffarpur',
-    'Bhagalpur',
-    'Darbhanga',
-    'Purnia',
-  ],
-
-  'Chhattisgarh': [
-    'Raipur',
-    'Bhilai',
-    'Bilaspur',
-    'Korba',
-    'Durg',
-    'Jagdalpur',
-  ],
-
-  'Goa': [
-    'Panaji',
-    'Margao',
-    'Vasco da Gama',
-    'Mapusa',
-    'Ponda',
-  ],
-
-  'Gujarat': [
-    'Ahmedabad',
-    'Surat',
-    'Vadodara',
-    'Rajkot',
-    'Bhavnagar',
-    'Jamnagar',
-    'Junagadh',
-  ],
-
-  'Haryana': [
-    'Gurugram',
-    'Faridabad',
-    'Panipat',
-    'Ambala',
-    'Hisar',
-    'Karnal',
-    'Rohtak',
-  ],
-
-  'Himachal Pradesh': [
-    'Shimla',
-    'Manali',
-    'Dharamshala',
-    'Solan',
-    'Mandi',
-    'Kullu',
-  ],
-
-  'Jharkhand': [
-    'Ranchi',
-    'Jamshedpur',
-    'Dhanbad',
-    'Bokaro',
-    'Deoghar',
-    'Hazaribagh',
-  ],
-
-  'Karnataka': [
-    'Bengaluru',
-    'Mysuru',
-    'Mangaluru',
-    'Hubballi',
-    'Belagavi',
-    'Davangere',
-    'Shivamogga',
-  ],
-
-  'Kerala': [
-    'Thiruvananthapuram',
-    'Kochi',
-    'Kozhikode',
-    'Thrissur',
-    'Kollam',
-    'Kannur',
-    'Alappuzha',
-  ],
-
-  'Madhya Pradesh': [
-    'Bhopal',
-    'Indore',
-    'Jabalpur',
-    'Gwalior',
-    'Ujjain',
-    'Sagar',
-    'Rewa',
-  ],
-
-  'Maharashtra': [
-    'Mumbai',
-    'Pune',
-    'Nagpur',
-    'Nashik',
-    'Aurangabad',
-    'Kolhapur',
-    'Solapur',
-    'Amravati',
-    'Thane',
-    'Navi Mumbai',
-  ],
-
-  'Manipur': [
-    'Imphal',
-    'Thoubal',
-    'Bishnupur',
-    'Churachandpur',
-  ],
-
-  'Meghalaya': [
-    'Shillong',
-    'Tura',
-    'Jowai',
-    'Nongpoh',
-  ],
-
-  'Mizoram': [
-    'Aizawl',
-    'Lunglei',
-    'Champhai',
-    'Kolasib',
-  ],
-
-  'Nagaland': [
-    'Kohima',
-    'Dimapur',
-    'Mokokchung',
-    'Tuensang',
-  ],
-
-  'Odisha': [
-    'Bhubaneswar',
-    'Cuttack',
-    'Rourkela',
-    'Berhampur',
-    'Puri',
-    'Sambalpur',
-    'Balasore',
-  ],
-
-  'Punjab': [
-    'Chandigarh',
-    'Ludhiana',
-    'Amritsar',
-    'Jalandhar',
-    'Patiala',
-    'Bathinda',
-    'Mohali',
-  ],
-
-  'Rajasthan': [
-    'Jaipur',
-    'Jodhpur',
-    'Udaipur',
-    'Kota',
-    'Ajmer',
-    'Bikaner',
-    'Alwar',
-  ],
-
-  'Sikkim': [
-    'Gangtok',
-    'Namchi',
-    'Gyalshing',
-    'Mangan',
-  ],
-
-  'Tamil Nadu': [
-    'Chennai',
-    'Coimbatore',
-    'Madurai',
-    'Tiruchirappalli',
-    'Salem',
-    'Tiruppur',
-    'Erode',
-    'Vellore',
-  ],
-
-  'Telangana': [
-    'Hyderabad',
-    'Warangal',
-    'Nizamabad',
-    'Karimnagar',
-    'Khammam',
-    'Nalgonda',
-  ],
-
-  'Tripura': [
-    'Agartala',
-    'Udaipur',
-    'Dharmanagar',
-    'Kailasahar',
-  ],
-
-  'Uttar Pradesh': [
-    'Lucknow',
-    'Kanpur',
-    'Agra',
-    'Varanasi',
-    'Prayagraj',
-    'Meerut',
-    'Noida',
-    'Ghaziabad',
-    'Gorakhpur',
-  ],
-
-  'Uttarakhand': [
-    'Dehradun',
-    'Haridwar',
-    'Rishikesh',
-    'Haldwani',
-    'Nainital',
-    'Roorkee',
-  ],
-
-  'West Bengal': [
-    'Kolkata',
-    'Howrah',
-    'Durgapur',
-    'Asansol',
-    'Siliguri',
-    'Darjeeling',
-    'Kharagpur',
-  ],
-};
-
-// =========================================================
 // STATE OPTIONS
 // =========================================================
 
 const states = useMemo(() => {
-  return ['All', ...indianStates];
-}, []);
+  const uniqueStates = Array.from(
+    new Set(
+      facilities.map((store) => store.state).filter((s): s is string => !!s)
+    )
+  ).sort();
+  return ['All', ...uniqueStates];
+}, [facilities]);
 
 // =========================================================
 // CITY OPTIONS
 // =========================================================
 
 const cities = useMemo(() => {
-  if (stateFilter === 'All') {
-    const allCities = Object.values(citiesByState).flat();
+  const filteredByState = stateFilter === 'All'
+    ? facilities
+    : facilities.filter(
+        (store) =>
+          store.state === stateFilter ||
+          (store.location && store.location.toLowerCase().includes(stateFilter.toLowerCase()))
+      );
 
-    return [
-      'All',
-      ...Array.from(new Set(allCities)).sort(),
-    ];
-  }
+  const uniqueCities = Array.from(
+    new Set(
+      filteredByState.map((store) => store.city).filter((c): c is string => !!c)
+    )
+  ).sort();
 
-  return [
-    'All',
-    ...(citiesByState[stateFilter] || []),
-  ];
-}, [stateFilter]);
+  return ['All', ...uniqueCities];
+}, [facilities, stateFilter]);
 
   // =========================================================
   // CROPS
@@ -867,11 +597,13 @@ const cities = useMemo(() => {
       (store) => {
         const matchesState =
           stateFilter === 'All' ||
-          store.state === stateFilter;
+          store.state === stateFilter ||
+          (store.location && store.location.toLowerCase().includes(stateFilter.toLowerCase()));
 
         const matchesCity =
           cityFilter === 'All' ||
-          store.city === cityFilter;
+          store.city === cityFilter ||
+          (store.location && store.location.toLowerCase().includes(cityFilter.toLowerCase()));
 
         const matchesCrop =
           cropFilter === 'All' ||
@@ -1086,13 +818,27 @@ const cities = useMemo(() => {
 
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
 
-            <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl border flex-1 ${userCoords ? 'bg-emerald-50 border-emerald-200' : 'bg-amber-50 border-amber-200'}`}>
+            <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl border flex-1 ${
+              isGpsLoading ? 'bg-blue-50 border-blue-200'
+              : userCoords ? 'bg-emerald-50 border-emerald-200'
+              : gpsError ? 'bg-red-50 border-red-200'
+              : 'bg-amber-50 border-amber-200'
+            }`}>
 
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${userCoords ? 'bg-emerald-100' : 'bg-amber-100'}`}>
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
+                isGpsLoading ? 'bg-blue-100'
+                : userCoords ? 'bg-emerald-100'
+                : gpsError ? 'bg-red-100'
+                : 'bg-amber-100'
+              }`}>
                 {isGpsLoading ? (
-                  <Loader2 className="w-4 h-4 text-[#167A42] animate-spin" />
+                  <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
                 ) : (
-                  <MapPin className={`w-4 h-4 ${userCoords ? 'text-[#167A42]' : 'text-amber-600'}`} />
+                  <MapPin className={`w-4 h-4 ${
+                    userCoords ? 'text-[#167A42]'
+                    : gpsError ? 'text-red-500'
+                    : 'text-amber-600'
+                  }`} />
                 )}
               </div>
 
@@ -1100,27 +846,35 @@ const cities = useMemo(() => {
 
                 <div className="flex items-center gap-1.5 flex-wrap">
                   <p className="text-[10px] uppercase tracking-wide font-bold text-gray-400">
-                    {userCoords ? 'Your GPS Location' : 'Profile Location'}
+                    {isGpsLoading ? 'Detecting GPS…' : userCoords ? 'Your GPS Location' : 'Location'}
                   </p>
-                  {userCoords && (
+                  {userCoords && !isGpsLoading && (
                     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 text-[9px] font-bold">
                       <Navigation className="w-2.5 h-2.5" /> GPS Active
                     </span>
                   )}
                 </div>
 
-                <p className="text-sm font-bold text-gray-800 truncate">
-                  {isGpsLoading ? 'Detecting location...' : (userLocationLabel || selectedLocation.name + ', ' + selectedLocation.state)}
+                <p className={`text-sm font-bold truncate ${
+                  isGpsLoading ? 'text-blue-700 animate-pulse'
+                  : gpsError ? 'text-red-600'
+                  : 'text-gray-800'
+                }`}>
+                  {isGpsLoading
+                    ? 'Requesting your GPS location…'
+                    : gpsError
+                    ? 'GPS permission required'
+                    : (userLocationLabel || 'Click “Detect GPS” to find your location')}
                 </p>
 
-                {userCoords && (
+                {userCoords && !isGpsLoading && (
                   <p className="text-[10px] font-mono text-gray-400 mt-0.5">
-                    {userCoords.lat.toFixed(5)}, {userCoords.lon.toFixed(5)}
+                    {userCoords.lat.toFixed(5)}°N, {userCoords.lon.toFixed(5)}°E
                   </p>
                 )}
 
-                {gpsError && (
-                  <p className="text-[10px] text-amber-600 font-semibold mt-0.5">{gpsError}</p>
+                {gpsError && !isGpsLoading && (
+                  <p className="text-xs text-red-600 font-semibold mt-1 leading-tight">{gpsError}</p>
                 )}
 
               </div>

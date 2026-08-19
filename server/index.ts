@@ -3,10 +3,10 @@ import https from 'https';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-import { Pesticide, InputOrder, MarketPrice, ReportSummary } from './models.js';
+import { Pesticide, InputOrder, MarketPrice, ReportSummary, StorageFacility } from './models.js';
 // @ts-ignore
 import Lot from '../src/models/Lots.ts';
-import { mockPesticides, mockInputPurchaseHistory, mockFarmerLots, mockMarketPricesDetails, mockReportSummary } from '../src/data/mockData.js';
+import { mockPesticides, mockInputPurchaseHistory, mockFarmerLots, mockMarketPricesDetails, mockReportSummary, mockStorageFacilities } from '../src/data/mockData.js';
 import bcrypt from 'bcryptjs';
 import { languageMiddleware } from './middleware/languageMiddleware';
 import { translateResponse } from './utils/responseTranslator';
@@ -146,6 +146,18 @@ async function seedDatabase() {
     console.log('🌱 Re-seeding default report summaries to MongoDB...');
     await ReportSummary.deleteMany({});
     await ReportSummary.create(mockReportSummary);
+
+    // Seed StorageFacility with GeoJSON location for 2dsphere index
+    console.log('🌱 Re-seeding storage facilities to MongoDB...');
+    await StorageFacility.deleteMany({});
+    const facilitiesWithGeo = mockStorageFacilities.map((f: any) => ({
+      ...f,
+      geoLocation: {
+        type: 'Point',
+        coordinates: [f.lon, f.lat], // GeoJSON: [longitude, latitude]
+      },
+    }));
+    await StorageFacility.insertMany(facilitiesWithGeo);
   } catch (err: any) {
     console.error('❌ Error seeding database:', err.message);
   }
@@ -806,6 +818,100 @@ app.post('/api/translate', async (req: Request, res: Response): Promise<void> =>
   } catch (error: any) {
     res.status(500).json({ error: 'Translation failed', message: error.message });
   }
+});
+
+// --- STORAGE FACILITY ENDPOINT (GPS-based $geoNear) ---
+
+// Helper: haversine distance in km
+const haversineKm = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const R = 6371;
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) * Math.cos((lat2 * Math.PI) / 180) * Math.sin(dLon / 2) ** 2;
+  return parseFloat((R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a))).toFixed(1));
+};
+
+/**
+ * GET /api/storage
+ * Query params:
+ *   lat  — user latitude  (optional)
+ *   lon  — user longitude (optional)
+ *   maxKm — max search radius in km (default 5000 = all of India)
+ *
+ * When lat/lon provided: uses MongoDB $geoNear to return facilities
+ * sorted by true GPS distance, with gpsDistanceKm in each result.
+ * When not provided or MongoDB offline: returns all facilities sorted
+ * by Haversine from provided coords (or unsorted).
+ */
+app.get('/api/storage', async (req: Request, res: Response): Promise<void> => {
+  const lat = req.query.lat ? parseFloat(req.query.lat as string) : null;
+  const lon = req.query.lon ? parseFloat(req.query.lon as string) : null;
+  // Restrict default radius to 80km to only show local city facilities
+  const maxKm = req.query.maxKm ? parseFloat(req.query.maxKm as string) : 5000;
+
+  // MongoDB $geoNear path
+  if (isMongoConnected && lat !== null && lon !== null && !isNaN(lat) && !isNaN(lon)) {
+    try {
+      const results = await StorageFacility.aggregate([
+        {
+          $geoNear: {
+            near: { type: 'Point', coordinates: [lon, lat] },
+            distanceField: 'distanceMeters',
+            maxDistance: maxKm * 1000, // metres
+            spherical: true,
+          },
+        },
+      ]);
+
+      const facilities = results.map((f: any) => ({
+        id: f.id,
+        name: f.name,
+        type: f.type,
+        location: f.location,
+        distanceKm: f.distanceKm,
+        lat: f.lat,
+        lon: f.lon,
+        totalCapacityMT: f.totalCapacityMT,
+        availableCapacityMT: f.availableCapacityMT,
+        tempRangeCelsius: f.tempRangeCelsius,
+        humidityPercent: f.humidityPercent,
+        pricePerTonPerDayRs: f.pricePerTonPerDayRs,
+        suitableCrops: f.suitableCrops,
+        rating: f.rating,
+        phone: f.phone,
+        image: f.image,
+        state: f.state,
+        city: f.city,
+        verified: f.verified,
+        // GPS-computed distance from $geoNear
+        gpsDistanceKm: parseFloat((f.distanceMeters / 1000).toFixed(1)),
+      }));
+
+      res.json({ success: true, gpsEnabled: true, userLat: lat, userLon: lon, facilities });
+      return;
+    } catch (err: any) {
+      console.error('[Storage] $geoNear error:', err.message);
+      // Fall through to Haversine fallback
+    }
+  }
+
+  // Fallback: return mock data with Haversine distances if coords given
+  let facilities = (mockStorageFacilities as any[]).map((f: any) => ({
+    ...f,
+    gpsDistanceKm:
+      lat !== null && lon !== null && !isNaN(lat!) && !isNaN(lon!)
+        ? haversineKm(lat!, lon!, f.lat, f.lon)
+        : undefined,
+  }));
+
+  if (lat !== null && lon !== null) {
+    facilities = facilities.filter((f: any) => (f.gpsDistanceKm ?? 9999) <= maxKm);
+    facilities.sort((a: any, b: any) => (a.gpsDistanceKm ?? 9999) - (b.gpsDistanceKm ?? 9999));
+  }
+
+  res.json({ success: true, gpsEnabled: lat !== null, userLat: lat, userLon: lon, facilities });
 });
 
 // --- NEW ENDPOINTS FOR FARMER LOTS ---

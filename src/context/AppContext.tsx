@@ -49,6 +49,9 @@ interface AppContextType {
   setIsAddLotModalOpen: (open: boolean) => void;
   selectedStorageFacility: StorageFacility | null;
   setSelectedStorageFacility: (store: StorageFacility | null) => void;
+  // Shared GPS coords — set by AppContext GPS detect & StorageLocatorPage
+  userCoords: { lat: number; lon: number } | null;
+  setUserCoords: (coords: { lat: number; lon: number } | null) => void;
 
   // Profile Auth State
   user: FarmerUser;
@@ -68,6 +71,7 @@ const defaultUser: FarmerUser = {
   emailOrPhone: '',
   role: 'Farmer',
   location: '',
+  location: 'Detecting location...',
   farmSizeAcres: 4.0,
   mainCrops: ['Tomato', 'Red Onion', 'Spinach'],
   isLoggedIn: false,
@@ -76,9 +80,30 @@ const defaultUser: FarmerUser = {
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
+// Reverse geocode lat/lon using Nominatim (free, no API key)
+const reverseGeocodeNominatim = async (lat: number, lon: number): Promise<{ name: string; state: string }> => {
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&accept-language=en`
+    );
+    if (res.ok) {
+      const data = await res.json();
+      const a = data.address || {};
+      const name =
+        a.village || a.suburb || a.town || a.city || a.municipality || a.hamlet || a.county || 'My Location';
+      const state = a.state || a.country || 'India';
+      return { name, state };
+    }
+  } catch (e) {
+    // ignore
+  }
+  return { name: 'Unknown', state: 'Location' };
+};
+
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [activeTab, setActiveTab] = useState<string>('Dashboard');
   const [selectedLocation, setSelectedLocation] = useState<LocationOption>({ id: '', name: '', state: '' });
+  const [selectedLocation, setSelectedLocation] = useState<LocationOption>({ id: 'unknown', name: 'Unknown', state: 'Location' });
   const [selectedCropModal, setSelectedCropModal] = useState<CropRecommendation | null>(null);
   const [selectedCropToSell, setSelectedCropToSell] = useState<CropRecommendation | null>(null);
   const [selectedChannelModal, setSelectedChannelModal] = useState<BuyerChannel | null>(null);
@@ -89,9 +114,55 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   // Dynamic Page State
   const [farmerLots, setFarmerLots] = useState<FarmerLot[]>([]);
   const [cropRecommendations, setCropRecommendations] = useState<CropRecommendation[]>(mockCropRecommendations);
-  const [storageFacilities] = useState<StorageFacility[]>(mockStorageFacilities);
+  const [storageFacilities, setStorageFacilities] = useState<StorageFacility[]>(mockStorageFacilities);
   const [isAddLotModalOpen, setIsAddLotModalOpen] = useState<boolean>(false);
   const [selectedStorageFacility, setSelectedStorageFacility] = useState<StorageFacility | null>(null);
+  
+  // GPS coords — starts null, but we auto-detect on mount to get live location globally
+  const [userCoords, setUserCoords] = useState<{ lat: number; lon: number } | null>(null);
+
+  // Auto-detect GPS globally on mount so the whole app uses live location
+  useEffect(() => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        async (pos) => {
+          const { latitude: lat, longitude: lon } = pos.coords;
+          setUserCoords({ lat, lon });
+          const { name, state } = await reverseGeocodeNominatim(lat, lon);
+          setSelectedLocation({
+            id: 'live',
+            name: name || 'My Location',
+            state: state || '',
+            coordinates: { lat, lon },
+          });
+        },
+        (err) => {
+          // If denied/failed, we just stick with the initial mock fallback,
+          // but components can show explicit errors (like StorageLocatorPage).
+        },
+        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+      );
+    }
+  }, []);
+
+  // Fetch storage facilities from API (GPS-sorted when coords available)
+  useEffect(() => {
+    const fetchStorage = async () => {
+      try {
+        const url = userCoords
+          ? `http://localhost:5000/api/storage?lat=${userCoords.lat}&lon=${userCoords.lon}`
+          : 'http://localhost:5000/api/storage';
+        const res = await fetch(url);
+        const json = await res.json();
+        if (json && json.facilities && Array.isArray(json.facilities)) {
+          setStorageFacilities(json.facilities as StorageFacility[]);
+        }
+      } catch {
+        // Network error — keep mockStorageFacilities already in state
+      }
+    };
+    fetchStorage();
+  }, [userCoords]);
 
   // Fetch Lots from MongoDB on Mount
   useEffect(() => {
@@ -111,6 +182,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             grade: doc.grade || 'Grade A',
             storageStatus: doc.storageStatus || 'On Farm',
             location: doc.location || '',
+            location: doc.location || 'Unknown Location',
             condition: doc.condition || 'Fresh',
             estValueRs: doc.estValueRs || (doc.quantityKg * 20),
             image: doc.image || '/assets/tomato.jpg',
@@ -278,6 +350,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       emailOrPhone: identifier,
       role: role,
       location: location || '',
+      location: location || 'Unknown Location',
       coordinates: coordinates,
       farmSizeAcres: farmSize || 3.0,
       mainCrops: role === 'Farmer' ? ['Tomato', 'Onion'] : ['Operations'],
@@ -326,6 +399,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setIsAddLotModalOpen,
         selectedStorageFacility,
         setSelectedStorageFacility,
+        userCoords,
+        setUserCoords,
         user,
         isProfileModalOpen,
         setIsProfileModalOpen,

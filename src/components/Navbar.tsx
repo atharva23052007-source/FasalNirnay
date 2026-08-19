@@ -105,6 +105,25 @@ export const Navbar: React.FC = () => {
                 <ChevronDown className="w-3 h-3 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
               </>
             )}
+            <MapPin className="w-3.5 h-3.5 text-gray-500 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+            <select
+              value={selectedLocation.id}
+              onChange={(e) => {
+                const loc = [...(selectedLocation.id === 'live' ? [selectedLocation] : []), ...mockLocations].find(l => l.id === e.target.value);
+                if (loc) setSelectedLocation(loc);
+              }}
+              className="h-full appearance-none pl-8 pr-8 rounded-full border border-gray-200 text-xs font-semibold text-gray-700 bg-white hover:bg-gray-50 cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#167A42]/20 transition-all shadow-sm leading-none max-w-[140px] xl:max-w-none truncate"
+            >
+              {selectedLocation.id === 'live' && (
+                <option value="live">📍 {selectedLocation.name}, {selectedLocation.state}</option>
+              )}
+              {mockLocations.map(loc => (
+                <option key={loc.id} value={loc.id}>
+                  {loc.name}, {loc.state}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="w-3 h-3 text-gray-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
           </div>
 
           {/* Weather Pill */}
