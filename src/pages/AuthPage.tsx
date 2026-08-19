@@ -124,7 +124,7 @@ export const AuthPage: React.FC = () => {
       const res = await fetch('/api/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ identifier, password, role }),
+        body: JSON.stringify({ identifier, password, role, location: locationName, coordinates }),
       });
 
       let data;
@@ -142,7 +142,7 @@ export const AuthPage: React.FC = () => {
 
       setSuccessMessage('Authentication successful! Welcome to FasalNirnay.');
       setTimeout(() => {
-        loginUser(data.user.emailOrPhone || data.user.mobile, data.user.name, data.user.role, data.user.token, coordinates);
+        loginUser(data.user.emailOrPhone || data.user.mobile, data.user.name, data.user.role, data.user.token, coordinates, data.user.location);
       }, 400);
     } catch (err: any) {
       setErrorMessage('Server connection error: ' + err.message);
@@ -449,6 +449,18 @@ export const AuthPage: React.FC = () => {
                       {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
+                </div>
+
+                {/* LocationIQ Geolocation Component for Login */}
+                <div className="bg-gray-50 p-3.5 rounded-2xl border border-gray-200 shadow-2xs">
+                  <LocationIQPicker
+                    value={locationName}
+                    onChange={(loc, coords) => {
+                      setLocationName(loc);
+                      if (coords) setCoordinates(coords);
+                    }}
+                    label={t('farmLocationLabel', 'Current Location (GPS):')}
+                  />
                 </div>
 
                 {/* Auto-fill demo button */}

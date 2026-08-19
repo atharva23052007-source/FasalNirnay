@@ -59,7 +59,7 @@ interface AppContextType {
   setIsProfileModalOpen: (open: boolean) => void;
   profileModalTab: ProfileTab;
   setProfileModalTab: (tab: ProfileTab) => void;
-  loginUser: (identifier: string, name?: string, role?: UserRole, token?: string, coordinates?: { lat: number; lon: number }) => void;
+  loginUser: (identifier: string, name?: string, role?: UserRole, token?: string, coordinates?: { lat: number; lon: number }, location?: string) => void;
   signupUser: (name: string, identifier: string, location: string, farmSize: number, role?: UserRole, token?: string, coordinates?: { lat: number; lon: number }) => void;
   logoutUser: () => void;
   openProfileModal: () => void;
@@ -70,6 +70,7 @@ const defaultUser: FarmerUser = {
   mobile: '',
   emailOrPhone: '',
   role: 'Farmer',
+  location: '',
   location: 'Detecting location...',
   farmSizeAcres: 4.0,
   mainCrops: ['Tomato', 'Red Onion', 'Spinach'],
@@ -101,6 +102,7 @@ const reverseGeocodeNominatim = async (lat: number, lon: number): Promise<{ name
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [activeTab, setActiveTab] = useState<string>('Dashboard');
+  const [selectedLocation, setSelectedLocation] = useState<LocationOption>({ id: '', name: '', state: '' });
   const [selectedLocation, setSelectedLocation] = useState<LocationOption>({ id: 'unknown', name: 'Unknown', state: 'Location' });
   const [selectedCropModal, setSelectedCropModal] = useState<CropRecommendation | null>(null);
   const [selectedCropToSell, setSelectedCropToSell] = useState<CropRecommendation | null>(null);
@@ -166,7 +168,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     const fetchLots = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/lots');
+        const response = await fetch('/api/lots');
         const json = await response.json();
         // Check for MongoDB response format or basic array
         if (json && json.success && Array.isArray(json.data)) {
@@ -179,6 +181,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             harvestDate: doc.harvestDate || '21 May',
             grade: doc.grade || 'Grade A',
             storageStatus: doc.storageStatus || 'On Farm',
+            location: doc.location || '',
             location: doc.location || 'Unknown Location',
             condition: doc.condition || 'Fresh',
             estValueRs: doc.estValueRs || (doc.quantityKg * 20),
@@ -251,7 +254,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setFarmerLots(prev => [newLot, ...prev]);
 
     // Save to backend
-    fetch('http://localhost:5000/api/lots', {
+    fetch('/api/lots', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -271,7 +274,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setFarmerLots(prev => prev.filter(l => l.id !== id));
 
     // Delete on backend
-    fetch(`http://localhost:5000/api/lots/${id}`, {
+    fetch(`/api/lots/${id}`, {
       method: 'DELETE',
     })
     .then(res => res.json())
@@ -289,7 +292,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const removeCropRecommendation = async (id: string) => {
     try {
-      await fetch(`http://localhost:5000/api/lots/${id}`, { method: 'DELETE' });
+      await fetch(`/api/lots/${id}`, { method: 'DELETE' });
     } catch (error) {
       console.error('Failed to delete lot from MongoDB:', error);
     }
@@ -311,14 +314,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     name?: string,
     role: UserRole = 'Farmer',
     token?: string,
-    coordinates?: { lat: number; lon: number }
+    coordinates?: { lat: number; lon: number },
+    location?: string
   ) => {
     const newUserState: FarmerUser = {
       name: name || (identifier.includes('@') ? identifier.split('@')[0] : 'Farmer User'),
       mobile: identifier,
       emailOrPhone: identifier,
       role: role,
-      location: `${selectedLocation.name}, ${selectedLocation.state}`,
+      location: location || (selectedLocation.name ? `${selectedLocation.name}, ${selectedLocation.state}` : ''),
       coordinates: coordinates,
       farmSizeAcres: 4.5,
       mainCrops: role === 'Farmer' ? ['Tomato', 'Red Onion', 'Spinach'] : ['Operations'],
@@ -345,6 +349,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       mobile: identifier,
       emailOrPhone: identifier,
       role: role,
+      location: location || '',
       location: location || 'Unknown Location',
       coordinates: coordinates,
       farmSizeAcres: farmSize || 3.0,

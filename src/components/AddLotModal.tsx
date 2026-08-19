@@ -130,7 +130,7 @@ export const AddLotModal: React.FC = () => {
 
     // Save to MongoDB via our Express Backend
     try {
-      const res = await fetch('http://localhost:5000/api/lots', {
+      const res = await fetch('/api/lots', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(lotPayload),

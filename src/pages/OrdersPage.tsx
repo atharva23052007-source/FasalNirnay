@@ -783,11 +783,11 @@ export const OrdersPage: React.FC = () => {
   useEffect(() => {
     setIsLoading(true);
     Promise.allSettled([
-      fetch('http://localhost:5000/api/pesticides').then(r => {
+      fetch('/api/pesticides').then(r => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
       }),
-      fetch('http://localhost:5000/api/orders/history').then(r => {
+      fetch('/api/orders/history').then(r => {
         if (!r.ok) throw new Error(`HTTP ${r.status}`);
         return r.json();
       }),
@@ -848,7 +848,7 @@ export const OrdersPage: React.FC = () => {
     setPurchaseHistory(prev => [newOrder, ...prev]);
 
     try {
-      await fetch('http://localhost:5000/api/orders/history', {
+      await fetch('/api/orders/history', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(newOrder),
@@ -1241,8 +1241,8 @@ export const OrdersPage: React.FC = () => {
                   setFetchError(null);
                   setIsLoading(true);
                   Promise.allSettled([
-                    fetch('http://localhost:5000/api/pesticides').then(r => r.json()),
-                    fetch('http://localhost:5000/api/orders/history').then(r => r.json()),
+                    fetch('/api/pesticides').then(r => r.json()),
+                    fetch('/api/orders/history').then(r => r.json()),
                   ]).then(([pestResult, histResult]) => {
                     if (pestResult.status === 'fulfilled' && Array.isArray(pestResult.value) && pestResult.value.length > 0) setPesticides(pestResult.value);
                     if (histResult.status === 'fulfilled' && Array.isArray(histResult.value)) setPurchaseHistory(histResult.value);

@@ -9,8 +9,7 @@ window.fetch = function (url, options) {
   const currentLang = localStorage.getItem('fasal_nirnay_lang') || 'en';
   // If request is made to our local backend, inject Accept-Language
   if (
-    typeof url === 'string' &&
-    (url.includes('/api/') || url.startsWith('http://localhost:5000'))
+    typeof url === 'string' && url.includes('/api/')
   ) {
     options = options || {};
     const headers = new Headers(options.headers || {});
